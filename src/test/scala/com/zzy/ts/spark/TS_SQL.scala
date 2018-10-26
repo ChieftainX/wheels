@@ -17,6 +17,7 @@ class TS_SQL {
   def init_all(): Unit = {
     val conf = Map(
       "spark.master" -> "local[*]",
+      "spark.sql.broadcastTimeout" -> "1200",
       "zzy.param" -> "fk"
     )
 
@@ -46,7 +47,7 @@ class TS_SQL {
 
   @BeforeEach
   def init(): Unit = {
-
+    println("🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎")
   }
 
   @Test
@@ -91,7 +92,7 @@ class TS_SQL {
 
   @AfterEach
   def after(): Unit = {
-
+    println("🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌🍌")
   }
 
   @AfterAll
