@@ -9,23 +9,24 @@ import org.junit.jupiter.api.TestInstance.Lifecycle
   * Created by zzy on 2018/10/25.
   */
 @TestInstance(Lifecycle.PER_CLASS)
-class TS_SQL {
+class TS_CORE_AND_SQL {
 
+  var core: Core = _
   var sql: SQL = _
 
   @BeforeAll
   def init_all(): Unit = {
     val conf = Map(
       "spark.master" -> "local[*]",
-      "spark.sql.broadcastTimeout" -> "1200",
       "zzy.param" -> "fk"
     )
 
-    sql = Core.log_less().apply(
-      name = "ts-sql",
+    core = Core(
       conf = conf,
       hive_support = false
-    ).support_sql
+    )
+
+    sql = core.support_sql
 
     val spark = sql.spark
     import spark.implicits._
@@ -88,6 +89,20 @@ class TS_SQL {
         |full join org_agg o on o.org_id = e.org_id
         |where e.height > 156
       """.stripMargin).show
+
+  }
+
+  @Test
+  def ts_save(): Unit = {
+
+    core.save_view("emp")
+
+    core.save_df(
+      sql.exe("select * from emp where height<0"),
+      "emp_empty")
+
+    core.save_view("emp")
+
   }
 
   @AfterEach
@@ -97,6 +112,7 @@ class TS_SQL {
 
   @AfterAll
   def after_all(): Unit = {
+    sql.core.uncache_all()
     sql.stop()
   }
 
