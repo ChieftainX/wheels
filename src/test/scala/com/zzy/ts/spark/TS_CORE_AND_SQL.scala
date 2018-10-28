@@ -1,6 +1,7 @@
 package com.zzy.ts.spark
 
 import com.zhjy.wheel.common.Time
+import com.zhjy.wheel.exception.RealityTableNotFoundException
 import org.junit.jupiter.api._
 import com.zhjy.wheel.spark._
 import com.zhjy.wheel.spark.Core.partition
@@ -51,7 +52,7 @@ class TS_CORE_AND_SQL {
       ("u-010", 167, "US", "o-003")
     ).toDF("user_id", "height", "country", "org_id")
 
-    sql.view(emp, "emp", cache = true)
+    sql register(emp, "emp", cache = true)
   }
 
   @BeforeEach
@@ -74,7 +75,7 @@ class TS_CORE_AND_SQL {
   @DisplayName("测试sql执行")
   def ts_exe(): Unit = {
 
-    sql.read("emp").show()
+    sql.view(s"emp").distinct.show()
 
     sql ==> (
       """
@@ -113,17 +114,38 @@ class TS_CORE_AND_SQL {
     sql show "emp"
 
     val s1 = sql.hive <== "emp"
+    assert(s1 > 0l)
 
     val s2 = sql.hive.save(
       sql ==> "select * from emp where height<0",
       "emp_empty")
+    assertEquals(0l, s2)
+    val ct_emp_empty = sql count "emp_empty"
+    try {
+      sql count("emp_empty", true)
+    } catch {
+      case e: RealityTableNotFoundException =>
+        println(e.msg)
+        assertEquals("reality table not found: emp_empty", e.msg)
+    }
+
+    println(s"emp count[not reality] : $ct_emp_empty")
+    assertEquals(ct_emp_empty, 0l)
 
     val s3 = sql.hive <== ("emp", save_mode = SaveMode.Append)
-
-    assertEquals(0l, s2)
-    assert(s1 > 0l)
     assertEquals(s1, s3)
-    sql show "emp"
+
+    val s3_ct_emp = sql count "emp"
+    println(s"emp count[not reality] : $s3_ct_emp")
+    assertEquals(s3_ct_emp, s1)
+    println(s"emp count[reality] : ${sql count("emp", true)}")
+
+    val s4 = sql.hive <== ("emp",
+      save_mode = SaveMode.Append,
+      refresh_view = true)
+    assertEquals(s1 + s3 + s4, sql count "emp")
+
+    sql show("emp", 100)
 
   }
 

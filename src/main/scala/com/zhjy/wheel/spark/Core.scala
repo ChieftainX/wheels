@@ -60,26 +60,31 @@ class Core(val spark: SparkSession) {
   object hive {
 
     object default {
-      val save_mode: SaveMode = SaveMode.Overwrite
-      val format_source: String = "parquet"
-      val coalesce_limit: Long = 100 * 10000
+      lazy val save_mode: SaveMode = SaveMode.Overwrite
+      lazy val format_source: String = "parquet"
+      lazy val coalesce_limit: Long = 100 * 10000
+      lazy val refresh_view: Boolean = false
     }
+
+    import default._
 
     def <==(view: String, table: String = null,
             p: partition = null,
-            save_mode: SaveMode = default.save_mode,
-            format_source: String = default.format_source,
-            coalesce_limit: Long = default.coalesce_limit): Long = {
+            save_mode: SaveMode = save_mode,
+            format_source: String = format_source,
+            coalesce_limit: Long = coalesce_limit,
+            refresh_view: Boolean = refresh_view): Long = {
       val df = spark.read.table(view)
       val tb = if (table ne null) table else view
-      save(df, tb, p, save_mode, format_source, coalesce_limit)
+      save(df, tb, p, save_mode, format_source, coalesce_limit, refresh_view)
     }
 
     def save(df: DataFrame, table: String,
              p: partition = null,
-             save_mode: SaveMode = default.save_mode,
-             format_source: String = default.format_source,
-             coalesce_limit: Long = default.coalesce_limit): Long = {
+             save_mode: SaveMode = save_mode,
+             format_source: String = format_source,
+             coalesce_limit: Long = coalesce_limit,
+             refresh_view: Boolean = refresh_view): Long = {
       catalog.dropTempView(table)
       log.info(s"$table[save mode:$save_mode,format source:$format_source] will be save")
       log.info(s"schema is:${df.schema}")
@@ -136,7 +141,8 @@ class Core(val spark: SparkSession) {
           }
       }
       df.unpersist
-      if (ct > 0) spark.read.table(table).createOrReplaceTempView(table)
+      if (refresh_view && ct > 0l) spark.read.table(table)
+      else df.createOrReplaceTempView(table)
       ct
     }
   }
