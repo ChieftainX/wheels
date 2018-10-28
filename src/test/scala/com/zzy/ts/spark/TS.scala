@@ -64,29 +64,30 @@ class TS {
 
     sql ==> (
       """
-        |select
-        |country,count(1) country_count
-        |from emp
-        |group by country
-      """.stripMargin, "country_agg")
+        select
+        country,count(1) country_count
+        from emp
+        group by country
+      """, "tmp_country_agg")
 
     sql ==> (
       """
-        |select
-        |org_id,count(1) org_count
-        |from emp
-        |group by org_id
-      """.stripMargin, "org_agg")
+        select
+        org_id,count(1) org_count
+        from emp
+        group by org_id
+      """, "tmp_org_agg")
 
     sql ==> (
       """
-        |select
-        |e.*,c.country_count,o.org_count
-        |from emp e
-        |inner join country_agg c on e.country = c.country
-        |full join org_agg o on o.org_id = e.org_id
-        |where e.height > 156
-      """.stripMargin, "emp_res")
+        select
+        e.*,c.country_count,o.org_count
+        from emp e,tmp_country_agg c,tmp_org_agg o
+        where
+        e.country = c.country and
+        o.org_id = e.org_id and
+        e.height > 156
+      """, "emp_res")
 
     sql show "emp_res"
 
@@ -98,10 +99,10 @@ class TS {
 
     sql show "emp"
 
-    val s1 = sql.hive <== "emp"
+    val s1 = sql <== "emp"
     assert(s1 > 0l)
 
-    val s2 = sql.hive.save(
+    val s2 = sql.save(
       sql ==> "select * from emp where height<0",
       "emp_empty")
     assertEquals(0l, s2)
@@ -117,7 +118,7 @@ class TS {
     println(s"emp count[not reality] : $ct_emp_empty")
     assertEquals(ct_emp_empty, 0l)
 
-    val s3 = sql.hive <== ("emp", save_mode = SaveMode.Append)
+    val s3 = sql <== ("emp", save_mode = SaveMode.Append)
     assertEquals(s1, s3)
 
     val s3_ct_emp = sql count "emp"
@@ -125,7 +126,7 @@ class TS {
     assertEquals(s3_ct_emp, s1)
     println(s"emp count[reality] : ${sql count("emp", true)}")
 
-    val s4 = sql.hive <== ("emp",
+    val s4 = sql <== ("emp",
       save_mode = SaveMode.Append,
       refresh_view = true)
     assertEquals(s1 + s3 + s4, sql count "emp")
@@ -152,11 +153,11 @@ class TS {
     val p3 = partition("country", "org_id").table_init
     p3 + ("CN", "o-001") + ("CN", "o-002") + ("CN", "o-002") + ("JP", "o-002") + ("US", "o-003")
 
-    sql.hive <== ("emp", "emp_p", p = p3)
+    sql <== ("emp", "emp_p", p = p3)
 
     val p4 = partition("country").table_init
 
-    sql.hive <== ("emp", "emp_ap", p = p4)
+    sql <== ("emp", "emp_ap", p = p4)
 
     sql show "emp_ap"
 

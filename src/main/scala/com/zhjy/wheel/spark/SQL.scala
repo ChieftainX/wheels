@@ -1,7 +1,9 @@
 package com.zhjy.wheel.spark
 
+import java.util.Locale
+
 import com.zhjy.wheel.common.Log
-import com.zhjy.wheel.exception.{IllegalParamException, RealityTableNotFoundException}
+import com.zhjy.wheel.exception._
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
@@ -15,7 +17,20 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
   import SQL._
 
-  val sql: SQL = this
+  private def save_mode: SaveMode = {
+    val mode = spark.conf.get("wheel.spark.sql.hive.save.mode")
+    mode.toLowerCase(Locale.ROOT) match {
+      case "overwrite" => SaveMode.Overwrite
+      case "append" => SaveMode.Append
+      case "ignore" => SaveMode.Ignore
+      case "error" | "default" => SaveMode.ErrorIfExists
+      case _ => throw IllegalConfException(s"unknown save mode: $mode." +
+        s"accepted save modes are 'overwrite', 'append', 'ignore', 'error'.")
+    }
+  }
+  private def format_source: String = spark.conf.get("wheel.spark.sql.hive.save.format")
+  private def coalesce_limit: Long = spark.conf.get("wheel.spark.sql.hive.save.file.lines.limit").toLong
+  private def refresh_view: Boolean = spark.conf.get("wheel.spark.sql.hive.save.refresh.view").toBoolean
 
   def ==>(sql: String, view: String = null,
           cache: Boolean = false,
@@ -27,6 +42,17 @@ class SQL(spark: SparkSession) extends Core(spark) {
     if (cache) df.persist(level)
     if (view ne null) df.createOrReplaceTempView(view)
     df
+  }
+
+  def <==(view: String, table: String = null,
+          p: partition = null,
+          save_mode: SaveMode = save_mode,
+          format_source: String = format_source,
+          coalesce_limit: Long = coalesce_limit,
+          refresh_view: Boolean = refresh_view): Long = {
+    val df = this view view
+    val tb = if (table ne null) table else view
+    save(df, tb, p, save_mode, format_source, coalesce_limit, refresh_view)
   }
 
   def register(df: DataFrame, view: String,
@@ -71,6 +97,72 @@ class SQL(spark: SparkSession) extends Core(spark) {
     df.show(limit, truncate)
   }
 
+  def save(df: DataFrame, table: String,
+           p: partition = null,
+           save_mode: SaveMode = save_mode,
+           format_source: String = format_source,
+           coalesce_limit: Long = coalesce_limit,
+           refresh_view: Boolean = refresh_view): Long = {
+    catalog.dropTempView(table)
+    log.info(s"$table[save mode:$save_mode,format source:$format_source] will be save")
+    log.info(s"schema is:${df.schema}")
+    if (df.storageLevel eq StorageLevel.NONE) df.cache
+    val ct = df.count
+    ct match {
+      case 0l =>
+        log.warn(s"$table is empty,skip save")
+      case _ =>
+        log.info(s"$table length is $ct,begin save")
+        if (p eq null) {
+          val coalesce_num = (1 + ct / coalesce_limit).toInt
+          val writer = df.coalesce(coalesce_num).write
+          save_mode match {
+            case SaveMode.Append =>
+              writer.insertInto(table)
+            case _ =>
+              writer
+                .mode(save_mode).format(format_source)
+                .saveAsTable(table)
+          }
+          log.info(s"$table[$coalesce_num flies] is saved")
+        } else {
+          import org.apache.spark.sql.functions.col
+          if (p.values.isEmpty) {
+            p ++ df.select(p.col.map(col): _*).distinct.collect
+              .map(r => p.col.map(r.getAs[String]))
+          }
+          val cols = (df.columns.filterNot(p.col.contains) ++ p.col).map(col)
+          val pdf = df.select(cols: _*)
+          var is_init = p.is_init
+          log.info(s"$table is partition table[init:$is_init],will run ${p.values.length} batch")
+          p.values.map(v => v.map(s => s"'$s'")).map(v => v.zip(p.col)
+            .map(s => s"${s._2}=${s._1}")).foreach(ps => {
+            val pdf_ = pdf.where(ps.mkString(" and ")).cache
+            val ct_ = pdf_.count
+            val coalesce_num = (1 + ct_ / coalesce_limit).toInt
+            val writer = pdf_.coalesce(coalesce_num).write
+            if (is_init) {
+              writer.mode(save_mode)
+                .format(format_source)
+                .partitionBy(p.col: _*)
+                .saveAsTable(table)
+              is_init = false
+            }
+            else {
+              spark.sql(s"alter table $table drop if exists partition (${ps.mkString(",")})")
+              writer.insertInto(table)
+            }
+            log.info(s"$table's partition[$ps] is saved,count:$ct_,file number:$coalesce_num")
+            pdf_.unpersist
+          })
+        }
+    }
+    df.unpersist
+    if (refresh_view && ct > 0l) this read table
+    this register(df, table)
+    ct
+  }
+
   def cache_many(df: DataFrame*): Unit = {
     log.info(s"${df.length} dataframe will be cache")
     df.foreach(_.cache)
@@ -108,98 +200,10 @@ class SQL(spark: SparkSession) extends Core(spark) {
     log.info("all cache is cleared")
   }
 
-  object hive {
-
-    object default {
-      lazy val save_mode: SaveMode = SaveMode.Overwrite
-      lazy val format_source: String = "parquet"
-      lazy val coalesce_limit: Long = 100 * 10000
-      lazy val refresh_view: Boolean = false
-    }
-
-    import default._
-
-    def <==(view: String, table: String = null,
-            p: partition = null,
-            save_mode: SaveMode = save_mode,
-            format_source: String = format_source,
-            coalesce_limit: Long = coalesce_limit,
-            refresh_view: Boolean = refresh_view): Long = {
-      val df = sql view view
-      val tb = if (table ne null) table else view
-      save(df, tb, p, save_mode, format_source, coalesce_limit, refresh_view)
-    }
-
-    def save(df: DataFrame, table: String,
-             p: partition = null,
-             save_mode: SaveMode = save_mode,
-             format_source: String = format_source,
-             coalesce_limit: Long = coalesce_limit,
-             refresh_view: Boolean = refresh_view): Long = {
-      catalog.dropTempView(table)
-      log.info(s"$table[save mode:$save_mode,format source:$format_source] will be save")
-      log.info(s"schema is:${df.schema}")
-      if (df.storageLevel eq StorageLevel.NONE) df.cache
-      val ct = df.count
-      ct match {
-        case 0l =>
-          log.warn(s"$table is empty,skip save")
-        case _ =>
-          log.info(s"$table length is $ct,begin save")
-          if (p eq null) {
-            val coalesce_num = (1 + ct / coalesce_limit).toInt
-            val writer = df.coalesce(coalesce_num).write
-            save_mode match {
-              case SaveMode.Append =>
-                writer.insertInto(table)
-              case _ =>
-                writer
-                  .mode(save_mode).format(format_source)
-                  .saveAsTable(table)
-            }
-            log.info(s"$table[$coalesce_num flies] is saved")
-          } else {
-            import org.apache.spark.sql.functions.col
-            if (p.values.isEmpty) {
-              p ++ df.select(p.col.map(col): _*).distinct.collect
-                .map(r => p.col.map(r.getAs[String]))
-            }
-            val cols = (df.columns.filterNot(p.col.contains) ++ p.col).map(col)
-            val pdf = df.select(cols: _*)
-            var is_init = p.is_init
-            log.info(s"$table is partition table[init:$is_init],will run ${p.values.length} batch")
-            p.values.map(v => v.map(s => s"'$s'")).map(v => v.zip(p.col)
-              .map(s => s"${s._2}=${s._1}")).foreach(ps => {
-              val pdf_ = pdf.where(ps.mkString(" and ")).cache
-              val ct_ = pdf_.count
-              val coalesce_num = (1 + ct_ / coalesce_limit).toInt
-              val writer = pdf_.coalesce(coalesce_num).write
-              if (is_init) {
-                writer.mode(save_mode)
-                  .format(format_source)
-                  .partitionBy(p.col: _*)
-                  .saveAsTable(table)
-                is_init = false
-              }
-              else {
-                spark.sql(s"alter table $table drop if exists partition (${ps.mkString(",")})")
-                writer.insertInto(table)
-              }
-              log.info(s"$table's partition[$ps] is saved,count:$ct_,file number:$coalesce_num")
-              pdf_.unpersist
-            })
-          }
-      }
-      df.unpersist
-      if (refresh_view && ct > 0l) sql read table
-      sql register(df, table)
-      ct
-    }
-  }
-
 }
 
 object SQL {
+
   lazy val log: Logger = Log.get("wheel>spark>sql")
 
   case class partition(col: String*) {
