@@ -12,9 +12,9 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % spark_version,
-  "org.apache.spark" %% "spark-sql" % spark_version,
-  "org.apache.spark" %% "spark-mllib" % spark_version
+  "org.apache.spark" %% "spark-core" % spark_version % Provided,
+  "org.apache.spark" %% "spark-sql" % spark_version % Provided,
+  "org.apache.spark" %% "spark-mllib" % spark_version % Provided
 )
 
 libraryDependencies ++= Seq(
