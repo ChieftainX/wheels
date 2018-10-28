@@ -4,19 +4,17 @@ import com.zhjy.wheel.common.Time
 import com.zhjy.wheel.exception.RealityTableNotFoundException
 import org.junit.jupiter.api._
 import com.zhjy.wheel.spark._
-import com.zhjy.wheel.spark.Core.partition
 import org.apache.spark.sql.SaveMode
 import org.junit.jupiter.api.Assertions._
 import org.apache.spark.sql.catalog.Catalog
 import org.junit.jupiter.api.TestInstance.Lifecycle
 
-
 /**
   * Created by zzy on 2018/10/25.
   */
 @TestInstance(Lifecycle.PER_CLASS)
-@DisplayName("测试CORE及SQL模块")
-class TS_CORE_AND_SQL {
+@DisplayName("测试Spark模块")
+class TS {
 
   var sql: SQL = _
   var catalog: Catalog = _
@@ -35,24 +33,9 @@ class TS_CORE_AND_SQL {
 
     val spark = sql.spark
     catalog = spark.catalog
-
+    DBS.emp(sql)
     println("current database is " + catalog.currentDatabase)
 
-    import spark.implicits._
-    val emp = Seq(
-      ("u-001", 175, "CN", "o-001"),
-      ("u-002", 188, "CN", "o-002"),
-      ("u-003", 190, "US", "o-001"),
-      ("u-004", 175, "CN", "o-001"),
-      ("u-005", 155, "JP", "o-002"),
-      ("u-006", 145, "JP", "o-002"),
-      ("u-007", 166, "JP", "o-002"),
-      ("u-008", 148, "CN", "o-002"),
-      ("u-009", 172, "CN", "o-003"),
-      ("u-010", 167, "US", "o-003")
-    ).toDF("user_id", "height", "country", "org_id")
-
-    sql register(emp, "emp", cache = true)
   }
 
   @BeforeEach
@@ -75,7 +58,9 @@ class TS_CORE_AND_SQL {
   @DisplayName("测试sql执行")
   def ts_exe(): Unit = {
 
-    sql.view(s"emp").distinct.show()
+    DBS.emp(sql)
+
+    sql show "emp"
 
     sql ==> (
       """
@@ -152,6 +137,8 @@ class TS_CORE_AND_SQL {
   @Test
   @DisplayName("测试partition功能")
   def ts_partition(): Unit = {
+    import com.zhjy.wheel.spark.SQL.partition
+
     val p1 = partition("y", "m", "d") + ("2018", "08", "12") + ("2018", "08", "17") + ("2018", "08", "17")
     println(p1)
     println(p1.values)
