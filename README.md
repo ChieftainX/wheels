@@ -42,6 +42,6 @@ sql ==> (
 sql <== "emp"
 ```
 ## 更多内容
-+ [安装](../wikis/install)
-+ [API DOC](../wikis/api-doc)
-+ [配置](../wikis/conf)
++ [安装](https://gitlab.com/chieftain/wheels/wikis/install)
++ [API DOC](https://gitlab.com/chieftain/wheels/wikis/api-doc)
++ [配置](https://gitlab.com/chieftain/wheels/wikis/conf)
