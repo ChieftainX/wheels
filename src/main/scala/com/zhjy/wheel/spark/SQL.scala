@@ -32,6 +32,14 @@ class SQL(spark: SparkSession) extends Core(spark) {
   private def coalesce_limit: Long = spark.conf.get("wheel.spark.sql.hive.save.file.lines.limit").toLong
   private def refresh_view: Boolean = spark.conf.get("wheel.spark.sql.hive.save.refresh.view").toBoolean
 
+  /**
+    * 使用sql进行数据处理
+    * @param sql 待执行的sql字符串
+    * @param view 执行结果的视图名称，若未填入则不注册视图
+    * @param cache 是否写入缓存
+    * @param level 写入缓存的级别
+    * @return dataframe对象
+    */
   def ==>(sql: String, view: String = null,
           cache: Boolean = false,
           level: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame = {
@@ -44,6 +52,17 @@ class SQL(spark: SparkSession) extends Core(spark) {
     df
   }
 
+  /**
+    * 将视图写入hive
+    * @param view 视图名称
+    * @param table 待写入hive表名称，默认为视图名称
+    * @param p 分区表配置对象，默认为写入非分区表
+    * @param save_mode 数据入库模式(overwrite:覆盖，append：追加，ignore：若存在则跳过写入，error：若存在则报错)
+    * @param format_source 写入数据格式(parquet,orc,csv,json)
+    * @param coalesce_limit 写入文件最大行数限制，用于预防小文件产生
+    * @param refresh_view 数据写入后是否刷新视图
+    * @return 写入数据的行数
+    */
   def <==(view: String, table: String = null,
           p: partition = null,
           save_mode: SaveMode = save_mode,
@@ -55,6 +74,14 @@ class SQL(spark: SparkSession) extends Core(spark) {
     save(df, tb, p, save_mode, format_source, coalesce_limit, refresh_view)
   }
 
+  /**
+    * 将dataframe对象注册到视图
+    * @param df 待注册dataframe
+    * @param view 视图名称
+    * @param cache 是否写入缓存
+    * @param level 写入缓存的级别
+    * @return dataframe对象
+    */
   def register(df: DataFrame, view: String,
                cache: Boolean = false,
                level: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame = {
@@ -64,6 +91,14 @@ class SQL(spark: SparkSession) extends Core(spark) {
     df
   }
 
+  /**
+    * 读取表，并注册为视图
+    * @param table 待读取表的名称
+    * @param reality 是否读取真实表
+    * @param cache 是否写入缓存
+    * @param level 写入缓存的级别
+    * @return dataframe对象
+    */
   def read(table: String,
            reality: Boolean = true,
            cache: Boolean = false,
@@ -84,19 +119,47 @@ class SQL(spark: SparkSession) extends Core(spark) {
     df
   }
 
+  /**
+    * 获取视图
+    * @param view 视图名称
+    * @return dataframe对象
+    */
   def view(view: String): DataFrame = spark.table(view)
 
+  /**
+    * 获取表/视图的行数
+    * @param table 待读取表的名称
+    * @param reality 是否读取真实表
+    * @return 表/视图的行数
+    */
   def count(table: String, reality: Boolean = false): Long = {
     if (reality) this.read(table).count
     else spark.table(table).count
   }
 
+  /**
+    * 预览表的数据
+    * @param view 视图名称
+    * @param limit 预览的行数
+    * @param truncate 是否简化输出结果
+    * @param reality 是否读取真实表
+    */
   def show(view: String, limit: Int = 20, truncate: Boolean = false,
            reality: Boolean = false): Unit = {
     val df = if (reality) this.read(view) else spark.table(view)
     df.show(limit, truncate)
   }
-
+  /**
+    * 将视图写入hive
+    * @param df 待保存dataframe
+    * @param table 待写入hive表名称，默认为视图名称
+    * @param p 分区表配置对象，默认为写入非分区表
+    * @param save_mode 数据入库模式(overwrite:覆盖，append：追加，ignore：若存在则跳过写入，error：若存在则报错)
+    * @param format_source 写入数据格式(parquet,orc,csv,json)
+    * @param coalesce_limit 写入文件最大行数限制，用于预防小文件产生
+    * @param refresh_view 数据写入后是否刷新视图
+    * @return 写入数据的行数
+    */
   def save(df: DataFrame, table: String,
            p: partition = null,
            save_mode: SaveMode = save_mode,
@@ -206,17 +269,30 @@ object SQL {
 
   lazy val log: Logger = Log.get("wheel>spark>sql")
 
+  /**
+    * 待分区的列
+    * @param col 列名
+    */
   case class partition(col: String*) {
 
     private var vals = new ListBuffer[Seq[String]]
 
+    // 是否初始化表
     var is_init = false
 
+    /**
+      * 设置表初始化
+      * @return this
+      */
     def table_init: this.type = {
       is_init = true
       this
     }
 
+    /**
+      * 获取待分区的列的值
+      * @return Seq((分区值1，分区值2，分区值3...分区值n))
+      */
     def values: Seq[Seq[String]] = {
       val cl = col.length
       vals.result().map(v => {
@@ -225,11 +301,21 @@ object SQL {
       }).distinct
     }
 
+    /**
+      * 添加分区的值
+      * @param value (分区值1，分区值2，分区值3...分区值n)
+      * @return this
+      */
     def +(value: String*): this.type = {
       vals += value
       this
     }
 
+    /**
+      * 添加分区的值
+      * @param values Seq((分区值1，分区值2，分区值3...分区值n))
+      * @return this
+      */
     def ++(values: Seq[Seq[String]]): this.type = {
       vals ++= values
       this

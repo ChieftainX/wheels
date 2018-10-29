@@ -23,8 +23,15 @@ class Core(val spark: SparkSession) {
     new SQL(spark)
   }
 
+  /**
+    * 获取 catalog 对象
+    * @return catalog
+    */
   def catalog: Catalog = spark.catalog
 
+  /**
+    * 释放资源
+    */
   def stop(): Unit = {
     log.info("spark will stop")
     spark.stop
