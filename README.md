@@ -10,7 +10,7 @@ val sql = Core().support_sql
 ```
 ### 使用sql进行数据处理
 ```
-sql ==> (
+    sql ==> (
       """
         select
         country,count(1) country_count
