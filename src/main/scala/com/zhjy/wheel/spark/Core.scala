@@ -14,12 +14,16 @@ class Core(val spark: SparkSession) {
 
   import Core.log
 
+  /**
+    * 是否支持sql模块功能
+    * @return sql对象
+    */
   def support_sql: SQL = {
     log.info("this wheel[spark] support sql")
     new SQL(spark)
   }
 
-  val catalog: Catalog = spark.catalog
+  def catalog: Catalog = spark.catalog
 
   def stop(): Unit = {
     log.info("spark will stop")
@@ -32,6 +36,15 @@ object Core {
 
   lazy val log: Logger = Log.get("wheel>spark>core")
 
+  /**
+    * 创建核心功能对象
+    * @param name app名称
+    * @param conf runtime 配置信息
+    * @param hive_support 是否开启hive支持
+    * @param database database名称
+    * @param log_less 是否需要少量的日志输出
+    * @return 核心功能对象
+    */
   def apply(name: String = s"run spark @ ${Time.now}",
             conf: Map[String, Any] = Map(),
             hive_support: Boolean = true,
