@@ -42,6 +42,6 @@ sql ==> (
 sql <== "emp"
 ```
 ## 更多内容
-+ [安装](/wikis/install)
-+ [API DOC](/wikis/api-doc)
-+ [配置](/wikis/conf)
++ [安装](../wikis/install)
++ [API DOC](../wikis/api-doc)
++ [配置](../wikis/conf)
