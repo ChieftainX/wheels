@@ -1,4 +1,4 @@
-package com.zhjy.wheel
+package com.wheels
 
 package object exception {
 

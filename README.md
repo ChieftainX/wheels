@@ -4,7 +4,7 @@ Wheels主要对大数据主流框架及常用算法库进行统一封装，优�
 ## 10秒入门
 
 ```scala
-import com.zhjy.wheel.spark._
+import com.wheels.spark._
 
 val sql = Core().support_sql //创建sql对象
 

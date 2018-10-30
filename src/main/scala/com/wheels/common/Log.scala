@@ -1,4 +1,4 @@
-package com.zhjy.wheel.common
+package com.wheels.common
 
 import org.apache.log4j.{Level, Logger}
 

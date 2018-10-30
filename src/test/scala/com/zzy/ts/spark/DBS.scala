@@ -1,6 +1,6 @@
 package com.zzy.ts.spark
 
-import com.zhjy.wheel.spark.SQL
+import com.wheels.spark.SQL
 
 object DBS {
 

@@ -1,9 +1,9 @@
 package com.zzy.ts.spark
 
-import com.zhjy.wheel.common.Time
-import com.zhjy.wheel.exception.RealityTableNotFoundException
+import com.wheels.common.Time
+import com.wheels.spark.{Core, SQL}
+import com.wheels.exception.RealityTableNotFoundException
 import org.junit.jupiter.api._
-import com.zhjy.wheel.spark._
 import org.apache.spark.sql.SaveMode
 import org.junit.jupiter.api.Assertions._
 import org.apache.spark.sql.catalog.Catalog
@@ -138,7 +138,7 @@ class TS {
   @Test
   @DisplayName("测试partition功能")
   def ts_partition(): Unit = {
-    import com.zhjy.wheel.spark.SQL.partition
+    import com.wheels.spark.SQL.partition
 
     val p1 = partition("y", "m", "d") + ("2018", "08", "12") + ("2018", "08", "17") + ("2018", "08", "17")
     println(p1)

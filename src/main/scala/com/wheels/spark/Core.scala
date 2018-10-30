@@ -1,7 +1,7 @@
-package com.zhjy.wheel.spark
+package com.wheels.spark
 
+import com.wheels.common.{Log, Time}
 import org.apache.spark.sql.SparkSession
-import com.zhjy.wheel.common._
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession.Builder
 import org.apache.spark.sql.catalog.Catalog

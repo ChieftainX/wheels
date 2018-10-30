@@ -1,34 +1,34 @@
 # API
 
 - ***[wheels-spark](#wheels-spark)***
-  - [创建核心功能对象](#com.zhjy.wheel.spark.Core.apply)
-  - [是否支持sql模块功能](#com.zhjy.wheel.spark.Core.support_sql)
-  - [获取 catalog 对象](#com.zhjy.wheel.spark.Core.catalog)
-  - [释放资源](#com.zhjy.wheel.spark.Core.stop)
-  - [使用sql进行数据处理](#com.zhjy.wheel.spark.SQL.==>)
-  - [视图写入hive](#com.zhjy.wheel.spark.SQL.<==)
-  - [dataframe对象注册到视图](#com.zhjy.wheel.spark.SQL.register)
-  - [读取表，并注册为视图](#com.zhjy.wheel.spark.SQL.read)
-  - [获取视图](#com.zhjy.wheel.spark.SQL.view)
-  - [获取表/视图的行数](#com.zhjy.wheel.spark.SQL.count)
-  - [预览表的数据](#com.zhjy.wheel.spark.SQL.show)
-  - [将视图写入hive](#com.zhjy.wheel.spark.SQL.save)
-  - [缓存dataframe](#com.zhjy.wheel.spark.SQL.cache-d)
-  - [缓存视图](#com.zhjy.wheel.spark.SQL.cache-v)  
-  - [释放dataframe缓存](#com.zhjy.wheel.spark.SQL.uncache-d)  
-  - [释放视图缓存](#com.zhjy.wheel.spark.SQL.uncache-v)  
-  - [释放全部缓存](#com.zhjy.wheel.spark.SQL.uncache_all)  
-  - [分区配置](#com.zhjy.wheel.spark.SQL.partition)
-  - [设置表为初始化](#com.zhjy.wheel.spark.SQL.partition.table_init)
-  - [获取待分区的列的值](#com.zhjy.wheel.spark.SQL.partition.values)
-  - [添加分区的值](#com.zhjy.wheel.spark.SQL.partition.+)
-  - [批量添加分区的值](#com.zhjy.wheel.spark.SQL.partition.++)
+  - [创建核心功能对象](#com.wheels.spark.Core.apply)
+  - [是否支持sql模块功能](#com.wheels.spark.Core.support_sql)
+  - [获取 catalog 对象](#com.wheels.spark.Core.catalog)
+  - [释放资源](#com.wheels.spark.Core.stop)
+  - [使用sql进行数据处理](#com.wheels.spark.SQL.==>)
+  - [视图写入hive](#com.wheels.spark.SQL.<==)
+  - [dataframe对象注册到视图](#com.wheels.spark.SQL.register)
+  - [读取表，并注册为视图](#com.wheels.spark.SQL.read)
+  - [获取视图](#com.wheels.spark.SQL.view)
+  - [获取表/视图的行数](#com.wheels.spark.SQL.count)
+  - [预览表的数据](#com.wheels.spark.SQL.show)
+  - [将视图写入hive](#com.wheels.spark.SQL.save)
+  - [缓存dataframe](#com.wheels.spark.SQL.cache-d)
+  - [缓存视图](#com.wheels.spark.SQL.cache-v)  
+  - [释放dataframe缓存](#com.wheels.spark.SQL.uncache-d)  
+  - [释放视图缓存](#com.wheels.spark.SQL.uncache-v)  
+  - [释放全部缓存](#com.wheels.spark.SQL.uncache_all)  
+  - [分区配置](#com.wheels.spark.SQL.partition)
+  - [设置表为初始化](#com.wheels.spark.SQL.partition.table_init)
+  - [获取待分区的列的值](#com.wheels.spark.SQL.partition.values)
+  - [添加分区的值](#com.wheels.spark.SQL.partition.+)
+  - [批量添加分区的值](#com.wheels.spark.SQL.partition.++)
   
 ## <a name='wheels-spark'>wheels-spark</a>
 
-### <a name='com.zhjy.wheel.spark.Core.apply'>创建核心功能对象</a>
+### <a name='com.wheels.spark.Core.apply'>创建核心功能对象</a>
 ```
-com.zhjy.wheel.spark.Core.apply
+com.wheels.spark.Core.apply
   /**
     * 创建核心功能对象
     *
@@ -46,9 +46,9 @@ com.zhjy.wheel.spark.Core.apply
             log_less: Boolean = true
            ): Core
 ```
-### <a name='com.zhjy.wheel.spark.Core.support_sql'>是否支持sql模块功能</a>
+### <a name='com.wheels.spark.Core.support_sql'>是否支持sql模块功能</a>
 ```
-com.zhjy.wheel.spark.Core.support_sql
+com.wheels.spark.Core.support_sql
   /**
     * 是否支持sql模块功能
     *
@@ -56,9 +56,9 @@ com.zhjy.wheel.spark.Core.support_sql
     */
   def support_sql: SQL
 ```
-### <a name='com.zhjy.wheel.spark.Core.catalog'>获取 catalog 对象</a>
+### <a name='com.wheels.spark.Core.catalog'>获取 catalog 对象</a>
 ```
-com.zhjy.wheel.spark.Core.catalog
+com.wheels.spark.Core.catalog
   /**
     * 获取 catalog 对象
     *
@@ -66,17 +66,17 @@ com.zhjy.wheel.spark.Core.catalog
     */
   def catalog: Catalog
 ```
-### <a name='com.zhjy.wheel.spark.Core.stop'>释放资源</a>
+### <a name='com.wheels.spark.Core.stop'>释放资源</a>
 ```
-com.zhjy.wheel.spark.Core.stop
+com.wheels.spark.Core.stop
   /**
     * 释放资源
     */
   def stop(): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.==>'>使用sql进行数据处理</a>
+### <a name='com.wheels.spark.SQL.==>'>使用sql进行数据处理</a>
 ```
-com.zhjy.wheel.spark.SQL.==>
+com.wheels.spark.SQL.==>
    /**
     * 使用sql进行数据处理
     *
@@ -90,9 +90,9 @@ com.zhjy.wheel.spark.SQL.==>
           cache: Boolean = false,
           level: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame
 ```
-### <a name='com.zhjy.wheel.spark.SQL.<=='>视图写入hive</a>
+### <a name='com.wheels.spark.SQL.<=='>视图写入hive</a>
 ```
-com.zhjy.wheel.spark.SQL.<==
+com.wheels.spark.SQL.<==
 /**
     * 视图写入hive
     *
@@ -112,9 +112,9 @@ com.zhjy.wheel.spark.SQL.<==
           coalesce_limit: Long = coalesce_limit,
           refresh_view: Boolean = refresh_view): Long
 ```
-### <a name='com.zhjy.wheel.spark.SQL.register'>dataframe对象注册到视图</a>
+### <a name='com.wheels.spark.SQL.register'>dataframe对象注册到视图</a>
 ```
-com.zhjy.wheel.spark.SQL.register
+com.wheels.spark.SQL.register
   /**
     * dataframe对象注册到视图
     *
@@ -128,9 +128,9 @@ com.zhjy.wheel.spark.SQL.register
                cache: Boolean = false,
                level: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame 
 ```
-### <a name='com.zhjy.wheel.spark.SQL.read'>读取表，并注册为视图</a>
+### <a name='com.wheels.spark.SQL.read'>读取表，并注册为视图</a>
 ```
-com.zhjy.wheel.spark.SQL.read
+com.wheels.spark.SQL.read
   /**
     * 读取表，并注册为视图
     *
@@ -146,9 +146,9 @@ com.zhjy.wheel.spark.SQL.read
            level: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame 
 
 ```
-### <a name='com.zhjy.wheel.spark.SQL.view'>获取视图</a>
+### <a name='com.wheels.spark.SQL.view'>获取视图</a>
 ```
-com.zhjy.wheel.spark.SQL.view
+com.wheels.spark.SQL.view
   /**
     * 获取视图
     *
@@ -157,9 +157,9 @@ com.zhjy.wheel.spark.SQL.view
     */
   def view(view: String): DataFrame 
 ```
-### <a name='com.zhjy.wheel.spark.SQL.count'>获取表/视图的行数</a>
+### <a name='com.wheels.spark.SQL.count'>获取表/视图的行数</a>
 ```
-com.zhjy.wheel.spark.SQL.count
+com.wheels.spark.SQL.count
   /**
     * 获取表/视图的行数
     *
@@ -169,9 +169,9 @@ com.zhjy.wheel.spark.SQL.count
     */
   def count(table: String, reality: Boolean = false): Long
 ```
-### <a name='com.zhjy.wheel.spark.SQL.show'>预览表的数据</a>
+### <a name='com.wheels.spark.SQL.show'>预览表的数据</a>
 ```
-com.zhjy.wheel.spark.SQL.show
+com.wheels.spark.SQL.show
   /**
     * 预览表的数据
     *
@@ -183,9 +183,9 @@ com.zhjy.wheel.spark.SQL.show
   def show(view: String, limit: Int = 20, truncate: Boolean = false,
            reality: Boolean = false): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.save'>将视图写入hive</a>
+### <a name='com.wheels.spark.SQL.save'>将视图写入hive</a>
 ```
-com.zhjy.wheel.spark.SQL.save
+com.wheels.spark.SQL.save
   /**
     * 将视图写入hive
     *
@@ -205,9 +205,9 @@ com.zhjy.wheel.spark.SQL.save
            coalesce_limit: Long = coalesce_limit,
            refresh_view: Boolean = refresh_view): Long
 ```
-### <a name='com.zhjy.wheel.spark.SQL.cache-d'>缓存dataframe</a>
+### <a name='com.wheels.spark.SQL.cache-d'>缓存dataframe</a>
 ```
-com.zhjy.wheel.spark.SQL.cache
+com.wheels.spark.SQL.cache
   /**
     * 缓存dataframe
     *
@@ -216,9 +216,9 @@ com.zhjy.wheel.spark.SQL.cache
     */
   def cache(df: DataFrame, dfs: DataFrame*): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.cache-v'>缓存视图</a>
+### <a name='com.wheels.spark.SQL.cache-v'>缓存视图</a>
 ```
-com.zhjy.wheel.spark.SQL.cache
+com.wheels.spark.SQL.cache
   /**
     * 缓存视图
     *
@@ -226,9 +226,9 @@ com.zhjy.wheel.spark.SQL.cache
     */
   def cache(view: String*): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.uncache-d'>释放dataframe缓存</a>
+### <a name='com.wheels.spark.SQL.uncache-d'>释放dataframe缓存</a>
 ```
-com.zhjy.wheel.spark.SQL.uncache
+com.wheels.spark.SQL.uncache
   /**
     * 释放dataframe缓存
     *
@@ -237,9 +237,9 @@ com.zhjy.wheel.spark.SQL.uncache
     */
   def uncache(df: DataFrame, dfs: DataFrame*): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.uncache-v'>释放视图缓存</a>
+### <a name='com.wheels.spark.SQL.uncache-v'>释放视图缓存</a>
 ```
-com.zhjy.wheel.spark.SQL.uncache
+com.wheels.spark.SQL.uncache
   /**
     * 释放视图缓存
     *
@@ -247,17 +247,17 @@ com.zhjy.wheel.spark.SQL.uncache
     */
   def uncache(view: String*): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.uncache_all'>释放全部缓存</a>
+### <a name='com.wheels.spark.SQL.uncache_all'>释放全部缓存</a>
 ```
-com.zhjy.wheel.spark.SQL.uncache_all
+com.wheels.spark.SQL.uncache_all
   /**
     * 释放全部缓存
     */
   def uncache_all(): Unit
 ```
-### <a name='com.zhjy.wheel.spark.SQL.partition'>分区配置</a>
+### <a name='com.wheels.spark.SQL.partition'>分区配置</a>
 ```
-com.zhjy.wheel.spark.SQL.partition
+com.wheels.spark.SQL.partition
   /**
     * 分区配置
     *
@@ -265,9 +265,9 @@ com.zhjy.wheel.spark.SQL.partition
     */
   case class partition(col: String*)
 ```
-### <a name='com.zhjy.wheel.spark.SQL.partition.table_init'>设置表为初始化</a>
+### <a name='com.wheels.spark.SQL.partition.table_init'>设置表为初始化</a>
 ```
-com.zhjy.wheel.spark.SQL.partition.table_init
+com.wheels.spark.SQL.partition.table_init
     /**
       * 设置表为初始化
       *
@@ -275,9 +275,9 @@ com.zhjy.wheel.spark.SQL.partition.table_init
       */
     def table_init: this.type 
 ```
-### <a name='com.zhjy.wheel.spark.SQL.partition.values'>获取待分区的列的值</a>
+### <a name='com.wheels.spark.SQL.partition.values'>获取待分区的列的值</a>
 ```
-com.zhjy.wheel.spark.SQL.partition.values
+com.wheels.spark.SQL.partition.values
     /**
       * 获取待分区的列的值
       *
@@ -285,9 +285,9 @@ com.zhjy.wheel.spark.SQL.partition.values
       */
     def values: Seq[Seq[String]]
 ```
-### <a name='com.zhjy.wheel.spark.SQL.partition.+'>添加分区的值</a>
+### <a name='com.wheels.spark.SQL.partition.+'>添加分区的值</a>
 ```
-com.zhjy.wheel.spark.SQL.partition.+
+com.wheels.spark.SQL.partition.+
     /**
       * 添加分区的值
       *
@@ -296,9 +296,9 @@ com.zhjy.wheel.spark.SQL.partition.+
       */
     def +(value: String*): this.type
 ```
-### <a name='com.zhjy.wheel.spark.SQL.partition.++'>批量添加分区的值</a>
+### <a name='com.wheels.spark.SQL.partition.++'>批量添加分区的值</a>
 ```
-com.zhjy.wheel.spark.SQL.partition.++
+com.wheels.spark.SQL.partition.++
     /**
       * 批量添加分区的值
       *

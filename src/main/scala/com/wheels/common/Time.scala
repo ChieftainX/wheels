@@ -1,5 +1,4 @@
-package com.zhjy.wheel.common
-
+package com.wheels.common
 
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
