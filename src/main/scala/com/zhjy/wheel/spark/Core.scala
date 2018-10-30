@@ -35,6 +35,7 @@ class Core(val spark: SparkSession) {
   def stop(): Unit = {
     log.info("spark will stop")
     spark.stop
+    log.info("spark is stop")
   }
 
 }

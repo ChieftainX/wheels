@@ -19,7 +19,9 @@ object DBS {
       ("u-010", 167, "US", "o-003")
     ).toDF("user_id", "height", "country", "org_id")
 
-    sql register(emp, "emp", cache = true)
+    sql cache emp
+
+    sql register(emp, "emp")
   }
 
 }
