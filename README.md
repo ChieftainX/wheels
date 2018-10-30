@@ -43,5 +43,5 @@ sql <== "emp"
 ```
 ## 更多内容
 + [安装](doc/install)
-+ [API DOC](doc/api)
++ [API](doc/api)
 + [配置](doc/conf)
