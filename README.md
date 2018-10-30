@@ -42,6 +42,6 @@ val sql = Core().support_sql
 sql <== "emp"
 ```
 ## 更多内容
-+ [安装](doc/install)
-+ [API](doc/api)
-+ [配置](doc/conf)
++ [安装](doc/install.md)
++ [API](doc/api.md)
++ [配置](doc/conf.md)
