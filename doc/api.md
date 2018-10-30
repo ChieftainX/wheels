@@ -273,6 +273,7 @@ com.zhjy.wheel.spark.SQL.partition.table_init
       *
       * @return this
       */
+    def table_init: this.type 
 ```
 ### <a name='com.zhjy.wheel.spark.SQL.partition.values'>获取待分区的列的值</a>
 ```
@@ -282,6 +283,7 @@ com.zhjy.wheel.spark.SQL.partition.values
       *
       * @return Seq((分区值1，分区值2，分区值3...分区值n))
       */
+    def values: Seq[Seq[String]]
 ```
 ### <a name='com.zhjy.wheel.spark.SQL.partition.+'>添加分区的值</a>
 ```
@@ -292,6 +294,7 @@ com.zhjy.wheel.spark.SQL.partition.+
       * @param value (分区值1，分区值2，分区值3...分区值n)
       * @return this
       */
+    def +(value: String*): this.type
 ```
 ### <a name='com.zhjy.wheel.spark.SQL.partition.++'>批量添加分区的值</a>
 ```
@@ -302,4 +305,5 @@ com.zhjy.wheel.spark.SQL.partition.++
       * @param values Seq((分区值1，分区值2，分区值3...分区值n))
       * @return this
       */
+    def ++(values: Seq[Seq[String]]): this.type
 ```
