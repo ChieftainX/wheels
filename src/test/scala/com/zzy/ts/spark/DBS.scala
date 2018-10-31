@@ -24,4 +24,24 @@ object DBS {
     sql register(emp, "emp")
   }
 
+  def recommend_res(sql: SQL): Unit = {
+    import sql.spark.implicits._
+    val emp = Seq(
+      ("u-001", "i-003", 12.886, "t1"),
+      ("u-002", "i-002", 33.886, "t1"),
+      ("u-003", "i-001", 77.886, "t1"),
+      ("u-004", "i-001", 54.886, "t1"),
+      ("u-002", "i-002", 99.886, "t2"),
+      ("u-004", "i-001", 22.886, "t2"),
+      ("u-001", "i-003", 45.886, "t2"),
+      ("u-002", "i-001", 66.886, "t3"),
+      ("u-003", "i-003", 0.886, "t3"),
+      ("u-004", "i-001", 2.886, "t3")
+    ).toDF("user_id", "item_id", "degree", "type")
+
+    sql cache emp
+
+    sql register(emp, "recommend_res")
+  }
+
 }

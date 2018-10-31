@@ -4,6 +4,7 @@ import java.util.Locale
 
 import com.wheels.common.Log
 import com.wheels.exception.{IllegalConfException, IllegalParamException, RealityTableNotFoundException}
+import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
@@ -16,6 +17,8 @@ import scala.collection.mutable.ListBuffer
 class SQL(spark: SparkSession) extends Core(spark) {
 
   import SQL._
+
+  def support_ml: ML = new ML(this)
 
   private def save_mode: SaveMode = {
     val mode = spark.conf.get("wheel.spark.sql.hive.save.mode")

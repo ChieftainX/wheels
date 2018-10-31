@@ -1,5 +1,7 @@
 package com.wheels.spark.database
 
-class DB {
+import com.wheels.spark.SQL
+
+class DB(sql: SQL) {
 
 }
