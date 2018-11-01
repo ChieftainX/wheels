@@ -17,6 +17,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-mllib" % spark_version % Provided
 )
 
+libraryDependencies += "redis.clients" % "jedis" % "2.9.0"
+
 libraryDependencies ++= Seq(
   "org.junit.platform" % "junit-platform-launcher" % "1.3.1" % Test,
   "org.junit.jupiter" % "junit-jupiter-engine" % "5.3.1" % Test,

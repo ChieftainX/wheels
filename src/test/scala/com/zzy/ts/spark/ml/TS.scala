@@ -27,9 +27,6 @@ class TS {
     ).support_sql
 
     ml = sql.support_ml
-
-    DBS.emp(sql)
-
   }
 
   @BeforeEach
@@ -46,26 +43,28 @@ class TS {
 
     sql show "recommend_res"
 
-    ml weighing("recommend_res", Map(
+    ml.union_weighing(Map(
       "t1" -> 0.33,
       "t2" -> 0.22,
       "t3" -> 0.45
-    ), output = "recommend_weighing_res")
+    ), output = "recommend_weighing_res") << "recommend_res"
 
     println("加权（默认：累加）后：")
 
     sql show "recommend_weighing_res"
 
-    ml weighing("recommend_res", Map(
+    val df = sql view "recommend_res"
+
+    ml.union_weighing(Map(
       "t1" -> 0.33,
       "t2" -> 0.22,
       "t3" -> 0.45
     ),
-      udf = (degrees:Seq[Double]) => {
+      udf = (degrees: Seq[Double]) => {
         val ct = degrees.length
-        degrees.sum/ct
+        degrees.sum / ct
       },
-      output = "recommend_weighing_res")
+      output = "recommend_weighing_res") dataframe df
 
     println("加权后(自定义：取平均)：")
 
