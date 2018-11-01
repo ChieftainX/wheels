@@ -3,8 +3,9 @@ package com.wheels.spark.database
 import java.util
 
 import com.wheels.spark.SQL
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig
+import redis.clients.jedis.{HostAndPort, JedisCluster}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import redis.clients.jedis.{HostAndPort, Jedis, JedisCluster}
 
 class DB(sql: SQL) {
 
@@ -32,11 +33,15 @@ class DB(sql: SQL) {
       nodes.map(kv => new HostAndPort(kv._1, kv._2)).foreach(nodes_.add)
       df.select(key_col, value_col).coalesce(batch).foreachPartition(rs => {
         var jedis: JedisCluster = null
+        val is_forever = life_seconds_ <= 0
         try {
-          jedis = new JedisCluster(nodes_, timeout_, timeout_, max_attempts_, pwd_, null)
+          jedis = new JedisCluster(nodes_, timeout_, timeout_, max_attempts_, pwd_, new GenericObjectPoolConfig())
           while (rs.hasNext) {
             val r = rs.next()
-            jedis.setex(r.get(0).toString, life_seconds_, r.get(1).toString)
+            val k = r.get(0).toString
+            val v = r.get(1).toString
+            if (is_forever) jedis.set(k, v)
+            else jedis.setex(k, life_seconds_, v)
           }
         } catch {
           case e: Exception =>
