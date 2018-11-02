@@ -4,8 +4,15 @@ import java.util
 
 import com.wheels.spark.SQL
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, TableName}
+import org.apache.hadoop.hbase.client.{Admin, Connection, ConnectionFactory, Put}
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat
+import org.apache.hadoop.hbase.util.Bytes
+import org.apache.hadoop.mapreduce.{MRJobConfig, OutputFormat}
 import redis.clients.jedis.{HostAndPort, JedisCluster}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class DB(sql: SQL) {
 
@@ -55,4 +62,80 @@ class DB(sql: SQL) {
     }
   }
 
+  case class hbase(hbase_zookeeper_quorum: String,
+                   port: Int = 2181,
+                   family_name: String = "cf",
+                   split_keys: Seq[String] =
+                   Seq("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                     "a", "b", "c", "d", "e", "f"),
+                   overwrite: Boolean = false) {
+
+    private lazy val sks: Array[Array[Byte]] = split_keys.map(Bytes.toBytes).toArray
+
+    private lazy val family: Array[Byte] = Bytes.toBytes(family_name)
+
+    private def save_job(table: String): Configuration = {
+      conf.setClass(MRJobConfig.OUTPUT_FORMAT_CLASS_ATTR,
+        classOf[TableOutputFormat[_]], classOf[OutputFormat[_, _]])
+      conf.set(TableOutputFormat.OUTPUT_TABLE, table)
+      conf
+    }
+
+    private def init(table: String): Unit = {
+      var conn: Connection = null
+      var admin: Admin = null
+      try {
+        conn = create_conn
+        admin = conn.getAdmin
+        val tn = TableName.valueOf(table)
+        val desc = new HTableDescriptor(tn)
+        desc.addFamily(new HColumnDescriptor(family))
+        val is_exist = admin.tableExists(tn)
+        if (overwrite && is_exist) {
+          admin.disableTable(tn)
+          admin.deleteTable(tn)
+        }
+        if (overwrite || (!is_exist)) admin.createTable(desc, sks)
+      } catch {
+        case e: Exception =>
+          throw e
+      } finally {
+        if (admin ne null) admin.close()
+        if (conn ne null) conn.close()
+      }
+    }
+
+    private lazy val conf: Configuration = {
+      val conf = HBaseConfiguration.create()
+      conf.set("hbase.zookeeper.property.clientPort", port.toString)
+      conf.set("hbase.zookeeper.quorum", hbase_zookeeper_quorum)
+      conf
+    }
+
+    private def create_conn: Connection =
+      ConnectionFactory.createConnection(conf)
+
+    def <==(view: String, table: String = null): Unit = {
+      val tb = if (table ne null) table else view
+      val df = sql view tb
+      dataframe(df, tb)
+    }
+
+    def dataframe(df: DataFrame, table: String): Unit = {
+      save(df,table, (r:Row) =>{
+
+        (new ImmutableBytesWritable(),new Put(Bytes.toBytes(r.toString())))
+      })
+    }
+
+    private def save(df: DataFrame,
+             table: String,
+             f: Row => (ImmutableBytesWritable, Put)) {
+      init(table)
+      df.rdd.map(f).saveAsNewAPIHadoopDataset(save_job(table))
+    }
+  }
+
 }
+
+

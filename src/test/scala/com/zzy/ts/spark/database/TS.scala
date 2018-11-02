@@ -39,7 +39,6 @@ class TS {
   @Test
   @DisplayName("测试写集群模式的redis功能(注意开启redis-server)")
   def ts_redis(): Unit = {
-    DBS.emp(sql)
 
     sql ==> (
       """
@@ -51,7 +50,7 @@ class TS {
     sql show "w2redis"
 
     database.redis(
-      Seq(("127.0.0.1", 6379), ("127.0.0.1", 6380), ("127.0.0.1", 6381))
+      Seq(("127.0.0.1", 6372), ("127.0.0.1", 6371), ("127.0.0.1", 6370))
     ) <== "w2redis"
 
     val df = sql ==>
@@ -62,7 +61,7 @@ class TS {
       """.stripMargin
 
     database.redis(
-      Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381)),
+      Seq(("127.0.0.1", 6372), ("127.0.0.1", 6371)),
       life_seconds = 10
     ) dataframe df
 
