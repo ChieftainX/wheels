@@ -1,6 +1,7 @@
 # Wheels
 ## 简介
-Wheels主要对大数据主流框架及常用算法库进行统一封装，优化及实现，对外提供简洁且高效的API。<br>从而达到降低从事大数据场景下开发人员的编程技术门槛及提高整体项目质量的目的。
+Wheels主要对大数据主流框架及常用算法库进行统一封装，优化及实现，对外提供简洁且高效的API。<br>
+从而达到降低从事大数据场景下开发人员的编程技术门槛及提高整体项目质量的目的。
 ## 10秒入门
 
 ```scala
@@ -40,6 +41,7 @@ sql <== "emp" //保存结果数据
 ```
 ## 更多内容
 + [安装](doc/install.md)
++ [使用手册](doc/manual.md)
 + [API](doc/api.md)
 + [配置](doc/conf.md)
 
@@ -49,9 +51,9 @@ sql <== "emp" //保存结果数据
   - [X] spark-sql 集成
   - [X] 实现自动处理小文件的spark dataframe -> hive table存储
 - [ ] v0.1->v0.2
-  - [ ] 加权排序
-  - [ ] dataframe/view <-> redis
-  - [ ] dataframe/view <-> hbase
+  - [X] 加权排序
+  - [X] dataframe/view <-> redis
+  - [X] dataframe/view <-> hbase
   - [ ] dataframe/view <-> es
 - [ ] v0.2->v0.3
   - [ ] 相似度计算 

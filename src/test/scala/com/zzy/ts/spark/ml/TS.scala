@@ -34,7 +34,7 @@ class TS {
 
 
   @Test
-  @DisplayName("测试加权排序功能")
+  @DisplayName("测试联合加权功能")
   def ts_weighing_rank(): Unit = {
 
     DBS.recommend_res(sql)

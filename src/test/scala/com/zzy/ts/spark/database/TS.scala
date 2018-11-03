@@ -81,11 +81,19 @@ class TS {
       """.stripMargin,
       "w2hbase")
 
+    val df = sql ==>
+      """
+        |select user_id rk,height,country,org_id
+        |from emp
+      """.stripMargin
+
     sql show "w2hbase"
 
     val hbase = database.hbase("127.0.0.1")
 
     hbase <== "w2hbase"
+
+    hbase dataframe(df, "emp")
   }
 
   @AfterEach
