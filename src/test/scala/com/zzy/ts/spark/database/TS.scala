@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle
 
 
 @TestInstance(Lifecycle.PER_CLASS)
-@DisplayName("测试Spark-Ml模块")
+@DisplayName("测试Spark-DB模块")
 class TS {
 
   var sql: SQL = _
@@ -66,6 +66,26 @@ class TS {
     ) dataframe df
 
 
+  }
+
+
+  @Test
+  @DisplayName("测试dataframe -> hbase")
+  def ts_hbase(): Unit = {
+    DBS.emp(sql)
+
+    sql ==> (
+      """
+        |select user_id rk,height,country,org_id
+        |from emp
+      """.stripMargin,
+      "w2hbase")
+
+    sql show "w2hbase"
+
+    val hbase = database.hbase("127.0.0.1")
+
+    hbase <== "w2hbase"
   }
 
   @AfterEach

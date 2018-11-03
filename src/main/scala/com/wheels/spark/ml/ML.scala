@@ -29,7 +29,7 @@ class ML(sql: SQL) {
           weight_info.map(m => (lit(m._1), lit(m._2)))
             .foreach(kv => flag_ = flag_.when(col(type_col) === kv._1, col(degree_col) * kv._2))
           flag_.otherwise(col(degree_col))
-        }).rdd.map(r => (keys_.map(r.getAs[String]), r.getAs[Double](degree_col_)))
+        }).rdd.map(r => (keys_.map(k => r.get(r.fieldIndex(k)).toString), r.getAs[Double](degree_col_)))
           .groupByKey.map(r => Row.merge(Row.fromSeq(r._1), Row(udf_(r._2.toSeq)))),
         StructType(keys.map(StructField(_, StringType, nullable = true))
           ++ Seq(StructField(degree_col, DoubleType, nullable = true))

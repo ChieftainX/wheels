@@ -2,6 +2,7 @@ package com.wheels.spark.database
 
 import java.util
 
+import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig
 import org.apache.hadoop.conf.Configuration
@@ -56,7 +57,6 @@ class DB(sql: SQL) {
         } finally {
           if (jedis ne null) jedis.close()
         }
-
       })
 
     }
@@ -64,6 +64,7 @@ class DB(sql: SQL) {
 
   case class hbase(hbase_zookeeper_quorum: String,
                    port: Int = 2181,
+                   rk_col: String = "rk",
                    family_name: String = "cf",
                    split_keys: Seq[String] =
                    Seq("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -122,15 +123,25 @@ class DB(sql: SQL) {
     }
 
     def dataframe(df: DataFrame, table: String): Unit = {
-      save(df,table, (r:Row) =>{
-
-        (new ImmutableBytesWritable(),new Put(Bytes.toBytes(r.toString())))
-      })
+      val rk_col_ = rk_col
+      val family_ = family
+      val cols = df.schema.map(_.name)
+      if (!cols.contains(rk_col_)) throw IllegalParamException(s"your dataframe has no rk[$rk_col_] column")
+      val cols_ = cols.filter(_ ne rk_col_)
+      save(df.where(s"$rk_col_ is not null")
+        , table, (r: Row) => {
+          val put = new Put(Bytes.toBytes(r.get(r.fieldIndex(rk_col_)).toString))
+          cols_.foreach(col => {
+            val value = r.get(r.fieldIndex(col))
+            if (value != null) put.addColumn(family_, Bytes.toBytes(col), Bytes.toBytes(value.toString))
+          })
+          (new ImmutableBytesWritable(), put)
+        })
     }
 
     private def save(df: DataFrame,
-             table: String,
-             f: Row => (ImmutableBytesWritable, Put)) {
+                     table: String,
+                     f: Row => (ImmutableBytesWritable, Put)): Unit = {
       init(table)
       df.rdd.map(f).saveAsNewAPIHadoopDataset(save_job(table))
     }
