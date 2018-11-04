@@ -241,16 +241,19 @@ val sql = Core(database = "my_hive_db").support_sql //创建sql对象
 
 val emp = sql view "emp"
 
+//统计每个国家的人数
 val tmp_country_agg = emp
   .groupBy("country")
   .count()
   .as("country_count")
 
+//统计每个组织的人数
 val tmp_org_agg = emp
   .groupBy("org_id")
   .count()
   .as("org_count")
 
+//获取最终结果
 val emp_res = emp
   .join(tmp_country_agg, "country")
   .join(tmp_org_agg, "org_id")
@@ -277,7 +280,7 @@ import org.apache.spark.sql.SaveMode
 
 sql <== ("emp_res",//视图名称
       "tb_emp_res",//待写入hive表名称
-      save_mode = SaveMode.Append,//写入模式为追加写入
+      save_mode = SaveMode.Overwrite,//写入模式为追加写入
       format_source = "orc",//文件格式设置为orc
       coalesce_limit = 100*10000//单文件行数上限为100W
     )

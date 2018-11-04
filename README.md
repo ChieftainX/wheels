@@ -37,7 +37,7 @@ sql ==> (
     e.height > 156
   """, "emp_res")
 
-sql <== "emp_res" //保存结果数据
+sql <== "emp_res" //保存结果数据到默认存储
 ```
 ## 更多内容
 + [安装](doc/install.md)
