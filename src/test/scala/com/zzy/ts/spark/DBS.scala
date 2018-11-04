@@ -44,4 +44,15 @@ object DBS {
     sql register(emp, "recommend_res")
   }
 
+  def movielens_ratings(sql: SQL): Unit = {
+    import sql.spark.implicits._
+    val df = sql.spark.read.text("data/movielens_ratings.csv")
+      .rdd.map(r => {
+      val ls = r.get(0).toString.split("::")
+      (ls(0).toLong, ls(1).toLong, ls(2).toInt, ls(3).toLong)
+    }).toDF("user_id", "item_id", "rating", "ts")
+
+    sql register(df, "movielens_ratings")
+  }
+
 }

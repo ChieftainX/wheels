@@ -1,22 +1,26 @@
 package com.wheels.spark.ml
 
 import com.wheels.spark.SQL
+import com.wheels.spark.ml.lib.Recommendation
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{StringType, StructField, StructType, DoubleType}
+import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
 
 class ML(sql: SQL) {
 
   def spark: SparkSession = sql.spark
 
+  def recommendation: Recommendation = new Recommendation(this)
+
   /**
     * 联合加权配置项
+    *
     * @param weight_info 类型与权重的对应关系
-    * @param type_col 类型列名，默认为type
-    * @param keys 唯一标示，默认为 Seq("user_id", "item_id")
-    * @param degree_col 评分列名，默认为degree
-    * @param udf 自定义聚合函数，默认为求和
-    * @param output 输出视图名称，默认无输出视图
+    * @param type_col    类型列名，默认为type
+    * @param keys        唯一标示，默认为 Seq("user_id", "item_id")
+    * @param degree_col  评分列名，默认为degree
+    * @param udf         自定义聚合函数，默认为求和
+    * @param output      输出视图名称，默认无输出视图
     */
   case class union_weighing(
                              weight_info: Map[String, Double],

@@ -75,6 +75,21 @@ class TS {
     sql show "recommend_weighing_res"
   }
 
+  @Test
+  @DisplayName("测试lfm")
+  def ts_re_lfm(): Unit = {
+    DBS.movielens_ratings(sql)
+
+    sql show "movielens_ratings"
+
+    val recommendation = ml.recommendation
+
+    val lfm = recommendation.lfm()
+
+    lfm ==> "movielens_ratings"
+
+  }
+
   @AfterEach
   def after(): Unit = {}
 
