@@ -62,6 +62,14 @@ class DB(sql: SQL) {
     }
   }
 
+  /***
+    * @param hbase_zookeeper_quorum zk地址串，多个地址使用英文逗号分隔
+    * @param port zk端口好
+    * @param rk_col row key 所对应的列名，默认为rk
+    * @param family_name 列族名称，默认为cf
+    * @param split_keys 预分区字母，默认为0～9，a～f
+    * @param overwrite 是否采用完全覆盖写入方式（每次写入前重建表），默认为false
+    */
   case class hbase(hbase_zookeeper_quorum: String,
                    port: Int = 2181,
                    rk_col: String = "rk",

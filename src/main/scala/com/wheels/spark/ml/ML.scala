@@ -17,7 +17,7 @@ class ML(sql: SQL) {
                              udf: Seq[Double] => Double = (dgs: Seq[Double]) => dgs.sum,
                              output: String = null) {
 
-    def <<(input: String): DataFrame = dataframe(sql view input)
+    def ==>(input: String): DataFrame = dataframe(sql view input)
 
     def dataframe(input: DataFrame): DataFrame = {
       val keys_ = keys

@@ -55,8 +55,8 @@ class TS {
   }
 
   @Test
-  @DisplayName("测试sql执行")
-  def ts_exe(): Unit = {
+  @DisplayName("测试数据转换[sql 方式]")
+  def ts_exe_sql(): Unit = {
 
     DBS.emp(sql)
 
@@ -90,7 +90,34 @@ class TS {
       """, "emp_res")
 
     sql show "emp_res"
+  }
 
+  @Test
+  @DisplayName("测试数据转换[dataframe 方式]")
+  def ts_exe_df(): Unit = {
+
+    DBS.emp(sql)
+
+    sql show "emp"
+
+    val emp = sql view "emp"
+
+    val tmp_country_agg = emp
+      .groupBy("country")
+      .count()
+      .as("country_count")
+
+    val tmp_org_agg = emp
+      .groupBy("org_id")
+      .count()
+      .as("org_count")
+
+    val emp_res = emp
+      .join(tmp_country_agg, "country")
+      .join(tmp_org_agg, "org_id")
+      .where("height > 156")
+
+    emp_res.show(truncate = false)
   }
 
   @Test
@@ -151,7 +178,7 @@ class TS {
     assertEquals(true, p2.is_init)
 
     val p3 = partition("country", "org_id").table_init
-    p3 + ("CN", "o-001") + ("CN", "o-002") + ("CN", "o-002") + ("JP", "o-002") + ("US", "o-003")
+    p3 + ("CN", "o-001") + ("CN", "o-002") ++ Seq(Seq("CN", "o-002"), Seq("JP", "o-002"), Seq("US", "o-003"))
 
     sql <== ("emp", "emp_p", p = p3)
 
