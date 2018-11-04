@@ -19,6 +19,17 @@ class DB(sql: SQL) {
 
   def spark: SparkSession = sql.spark
 
+  /**
+    * redis 配置项
+    * @param nodes redis集群地址及端口
+    * @param key_col 待写入的key对应的列，默认为k
+    * @param value_col 待写入的value对应的列，默认为v
+    * @param life_seconds 待写入数据的生命周期，默认为不过期
+    * @param timeout 连接redis超时时间
+    * @param max_attempts 最大重试次数
+    * @param pwd redis 秘钥
+    * @param batch 写入数据批次，默认20
+    */
   case class redis(
                     nodes: Seq[(String, Int)],
                     key_col: String = "k",
@@ -63,6 +74,7 @@ class DB(sql: SQL) {
   }
 
   /***
+    * hbase 配置项
     * @param hbase_zookeeper_quorum zk地址串，多个地址使用英文逗号分隔
     * @param port zk端口好
     * @param rk_col row key 所对应的列名，默认为rk

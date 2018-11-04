@@ -43,11 +43,13 @@ class TS {
 
     sql show "recommend_res"
 
-    val uw = ml.union_weighing(Map(
-      "t1" -> 0.33,
-      "t2" -> 0.22,
-      "t3" -> 0.45
-    ), output = "recommend_weighing_res")
+    val uw = ml.union_weighing(
+      Map(
+        "t1" -> 0.33,
+        "t2" -> 0.22,
+        "t3" -> 0.45)
+      , output = "recommend_weighing_res"
+    )
 
     uw ==> "recommend_res"
 

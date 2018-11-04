@@ -49,9 +49,13 @@ class TS {
 
     sql show "w2redis"
 
-    database.redis(
-      Seq(("127.0.0.1", 6372), ("127.0.0.1", 6371), ("127.0.0.1", 6370))
-    ) <== "w2redis"
+    val redis = database.redis(
+      Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381), ("127.0.0.1", 6382)),
+      life_seconds = 100 * 60
+    )
+
+     redis <== "w2redis"
+
 
     val df = sql ==>
       """
@@ -61,7 +65,7 @@ class TS {
       """.stripMargin
 
     database.redis(
-      Seq(("127.0.0.1", 6372), ("127.0.0.1", 6371)),
+      Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381)),
       life_seconds = 10
     ) dataframe df
 
