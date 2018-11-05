@@ -21,9 +21,6 @@ class Recommendation(ml: ML) {
     def dataframe(input: DataFrame): Unit = {
       val Array(training, test) = input.randomSplit(Array(0.8, 0.2))
       val als = new ALS()
-        .setUserCol("user_id")
-        .setItemCol("item_id")
-        .setRatingCol("rating")
 
       als.params.toSeq.foreach(p=>{
         println("==================")
@@ -32,6 +29,8 @@ class Recommendation(ml: ML) {
         println(p.name)
         println("------------------")
       })
+      //ArrayBuffer(alpha, checkpointInterval, coldStartStrategy, finalStorageLevel, implicitPrefs, intermediateStorageLevel, itemCol, maxIter, nonnegative, numItemBlocks, numUserBlocks, predictionCol, rank, ratingCol, regParam, seed, userCol)
+      println(als.params.toSeq.map(_.name))
       val model = als.fit(training)
       model.setColdStartStrategy("drop")
       val predictions = model.transform(test)

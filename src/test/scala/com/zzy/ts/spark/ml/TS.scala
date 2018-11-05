@@ -1,8 +1,10 @@
 package com.zzy.ts.spark.ml
 
+import com.wheels.common.Log
 import com.wheels.spark.ml.ML
 import com.wheels.spark.{Core, SQL}
 import com.zzy.ts.spark.DBS
+import org.apache.log4j.Level
 import org.junit.jupiter.api._
 import org.junit.jupiter.api.TestInstance.Lifecycle
 
@@ -17,9 +19,12 @@ class TS {
   @BeforeAll
   def init_all(): Unit = {
     val conf = Map(
-      "spark.master" -> "local[*]",
-      "zzy.param" -> "fk"
+      "spark.master" -> "local[*]"
     )
+
+    Log.log_setter(Map(
+      "com.github.fommil" -> Level.ERROR
+    ))
 
     sql = Core(
       conf = conf,

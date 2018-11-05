@@ -50,7 +50,7 @@ object DBS {
       .rdd.map(r => {
       val ls = r.get(0).toString.split("::")
       (ls(0).toLong, ls(1).toLong, ls(2).toInt, ls(3).toLong)
-    }).toDF("user_id", "item_id", "rating", "ts")
+    }).toDF("user", "item", "rating", "ts")
 
     sql register(df, "movielens_ratings")
   }
