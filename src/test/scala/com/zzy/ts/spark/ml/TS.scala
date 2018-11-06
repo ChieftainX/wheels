@@ -89,9 +89,19 @@ class TS {
 
     val recommendation = ml.recommendation
 
-    val lfm = recommendation.lfm()
+    val lfm = recommendation.lfm(
+      is_prediction = true
+    )
 
-    lfm ==> "movielens_ratings"
+    val (model, rmse) = lfm ==> "movielens_ratings"
+
+    println("rmse:" + rmse)
+
+    val res = model.recommendForAllUsers(20)
+
+    sql register(res, "res")
+
+    sql show "res"
 
   }
 
