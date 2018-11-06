@@ -167,6 +167,13 @@ class SQL(spark: SparkSession) extends Core(spark) {
   }
 
   /**
+    * 预览表结构
+    *
+    * @param view 视图名称
+    */
+  def desc(view: String): Unit = spark.table(view).printSchema()
+
+  /**
     * 将视图写入hive
     *
     * @param df             待保存dataframe

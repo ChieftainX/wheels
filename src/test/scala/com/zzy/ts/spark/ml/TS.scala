@@ -93,15 +93,13 @@ class TS {
       is_prediction = true
     )
 
-    val (model, rmse) = lfm ==> "movielens_ratings"
+    lfm ==> "movielens_ratings"
 
-    println("rmse:" + rmse)
+    lfm recommend4users(5,"re4users")
 
-    val res = model.recommendForAllUsers(20)
+    sql desc "re4users"
 
-    sql register(res, "res")
-
-    sql show "res"
+    sql show "re4users"
 
   }
 
