@@ -31,11 +31,11 @@ class Recommendation(ml: ML) {
 
     var model: ALSModel = _
 
-    def ==>(view: String): (ALSModel, Double) = {
+    def ==>(view: String): ALSModel = {
       dataframe(spark.table(view))
     }
 
-    def dataframe(input: DataFrame): (ALSModel, Double) = {
+    def dataframe(input: DataFrame): ALSModel = {
 
       val Array(training, test) = input.randomSplit(Array(training_proportion, 1 - training_proportion))
 
@@ -57,19 +57,16 @@ class Recommendation(ml: ML) {
         .setColdStartStrategy(cold_start_strategy)
 
       model = als.fit(if (is_prediction) training else input)
-
-      val rmse = {
-        if (is_prediction) {
-          val predictions = model.transform(test)
-          val evaluator = new RegressionEvaluator()
-            .setMetricName("rmse")
-            .setLabelCol(rating_col)
-            .setPredictionCol("prediction")
-          evaluator.evaluate(predictions)
-        } else -1.0
+      if (is_prediction) {
+        val predictions = model.transform(test)
+        val evaluator = new RegressionEvaluator()
+          .setMetricName("rmse")
+          .setLabelCol(rating_col)
+          .setPredictionCol("prediction")
+        val rmse = evaluator.evaluate(predictions)
+        log.info("rmse[lfm]: " + rmse)
       }
-      log.info("rmse[lfm]: " + rmse)
-      (model, rmse)
+      model
     }
 
     def recommend4users(num: Int = 50, output_view: String = null): DataFrame = {

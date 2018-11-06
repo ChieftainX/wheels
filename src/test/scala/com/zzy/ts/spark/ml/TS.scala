@@ -5,6 +5,7 @@ import com.wheels.spark.ml.ML
 import com.wheels.spark.{Core, SQL}
 import com.zzy.ts.spark.DBS
 import org.apache.log4j.Level
+import org.apache.spark.sql.Row
 import org.junit.jupiter.api._
 import org.junit.jupiter.api.TestInstance.Lifecycle
 
@@ -81,6 +82,51 @@ class TS {
   }
 
   @Test
+  @DisplayName("测试indexer")
+  def ts_f_indexer(): Unit = {
+    DBS.movielens_ratings(sql)
+
+    sql ==> (
+      """
+        |select
+        |concat('u-',user_id) user_id,
+        |concat('i-',item_id) item_id,
+        |rating,ts
+        |from movielens_ratings limit 10
+      """.stripMargin, "movielens_ratings")
+
+    sql show "movielens_ratings"
+
+    val features = ml.features
+
+    val indexer = features.indexer()
+
+    indexer s2i("movielens_ratings", "user_id")
+    indexer s2i("movielens_ratings", "item_id")
+
+
+    sql ==> (
+      """
+        |select
+        |user_id_index user_id,
+        |item_id_index item_id,
+        |rating,ts
+        |from movielens_ratings limit 10
+      """.stripMargin, "movielens_ratings")
+
+    sql show "movielens_ratings"
+
+    indexer i2s("movielens_ratings", "user_id")
+    indexer i2s("movielens_ratings", "item_id")
+
+    sql desc "movielens_ratings"
+
+    sql show "movielens_ratings"
+
+
+  }
+
+  @Test
   @DisplayName("测试lfm")
   def ts_re_lfm(): Unit = {
     DBS.movielens_ratings(sql)
@@ -95,9 +141,63 @@ class TS {
 
     lfm ==> "movielens_ratings"
 
-    lfm recommend4users(5,"re4users")
+    lfm recommend4users(5, "re4users")
 
     sql desc "re4users"
+
+    sql show "re4users"
+
+  }
+
+  @Test
+  @DisplayName("测试需要做indexer处理的lfm")
+  def ts_re_lfm_indexer(): Unit = {
+    DBS.movielens_ratings(sql)
+
+    sql ==> (
+      """
+        |select
+        |concat('u-',user_id) user_id,
+        |concat('i-',item_id) item_id,
+        |rating,ts
+        |from movielens_ratings
+      """.stripMargin, "movielens_ratings")
+
+    sql show "movielens_ratings"
+
+    val indexer = ml.features.indexer()
+
+    val lus = indexer.s2i("movielens_ratings", "user_id").labels
+    val lis = indexer.s2i("movielens_ratings", "item_id").labels
+
+    sql show "movielens_ratings"
+
+    val recommendation = ml.recommendation
+
+    val lfm = recommendation.lfm(
+      is_prediction = true,
+      user_col = "user_id_index",
+      item_col = "item_id_index"
+    )
+
+    lfm ==> "movielens_ratings"
+
+    val spark = ml.spark
+
+    import spark.implicits._
+
+    val df = lfm.recommend4users(5).flatMap(r => {
+      r.getAs[Seq[Row]](1).map(re => (r.getAs[Int](0), re.getAs[Int](0), re.getAs[Float](1)))
+    }).toDF("user_id_index", "item_id_index", "degree")
+
+    sql register(df, "re4users")
+
+    indexer i2s("re4users", "user_id_index", "user_id", labels = lus)
+    indexer i2s("re4users", "item_id_index", "item_id", labels = lis)
+
+    sql col_drop("re4users", "user_id_index", "item_id_index")
+
+    sql col_select("re4users", "user_id user", "item_id item", "degree")
 
     sql show "re4users"
 

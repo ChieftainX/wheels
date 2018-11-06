@@ -1,7 +1,7 @@
 package com.wheels.spark.ml
 
 import com.wheels.spark.SQL
-import com.wheels.spark.ml.lib.Recommendation
+import com.wheels.spark.ml.lib.{Features, Recommendation}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
@@ -11,6 +11,8 @@ class ML(sql: SQL) {
   def spark: SparkSession = sql.spark
 
   def recommendation: Recommendation = new Recommendation(this)
+
+  def features: Features = new Features(this)
 
   /**
     * 联合加权配置项

@@ -173,6 +173,49 @@ class SQL(spark: SparkSession) extends Core(spark) {
     */
   def desc(view: String): Unit = spark.table(view).printSchema()
 
+
+  /**
+    * 列重命名
+    *
+    * @param view 视图名称
+    * @param o    原始列名
+    * @param n    新列名
+    */
+  def col_rename(view: String, o: String, n: String): Unit =
+    spark.table(view).withColumnRenamed(o, n).createOrReplaceTempView(view)
+
+  /**
+    * 列重命名（批量）
+    *
+    * @param view 视图名称
+    * @param onm  新老列名映射关系
+    */
+  def col_rename(view: String, onm: Map[String, String]): Unit = {
+    var df = spark.table(view)
+    onm.foreach(m => {
+      df = df.withColumnRenamed(m._1, m._2)
+    })
+    df.createOrReplaceTempView(view)
+  }
+
+  /**
+    * 删除列
+    *
+    * @param view 视图名称
+    * @param cols 要刪除的列
+    */
+  def col_drop(view: String, cols: String*): Unit =
+    spark.table(view).drop(cols: _*).createOrReplaceTempView(view)
+
+  /**
+    * 选取指定的列
+    * @param view 视图名称
+    * @param cols 要选择的列
+    */
+  def col_select(view: String, cols: String*): Unit =
+    spark.table(view).selectExpr(cols: _*).createOrReplaceTempView(view)
+
+
   /**
     * 将视图写入hive
     *
