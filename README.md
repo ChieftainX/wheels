@@ -42,7 +42,7 @@ sql <== "emp_res" //保存结果数据到默认存储
 ## 更多内容
 + [安装](doc/install.md)
 + [使用手册](doc/manual.md)
-+ [API](doc/api.md)
++ [API](doc/api.zip)
 + [配置](doc/conf.md)
 
 ## 版本历史及后续计划
