@@ -427,4 +427,10 @@ object SQL {
     }
   }
 
+  /**
+    * 将指定列聚合为json
+    * @param col 列名
+    */
+  def collect_json(col:String*):String = s"to_json(collect_set(struct(${col.mkString(",")})))"
+
 }

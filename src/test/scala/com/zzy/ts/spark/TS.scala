@@ -8,6 +8,7 @@ import org.apache.spark.sql.SaveMode
 import org.junit.jupiter.api.Assertions._
 import org.apache.spark.sql.catalog.Catalog
 import org.junit.jupiter.api.TestInstance.Lifecycle
+import com.wheels.spark.SQL._
 
 /**
   * Created by zzy on 2018/10/25.
@@ -188,6 +189,20 @@ class TS {
 
     sql show "emp_ap"
 
+  }
+
+  @Test
+  @DisplayName("测试to_json功能")
+  def ts_2json(): Unit = {
+    sql show "emp"
+    sql ==> (
+      s"""
+        |select
+        |${collect_json("height","country","user_id")} msg,org_id
+        |from emp
+        |group by org_id
+      """.stripMargin,"zzy")
+    sql show "zzy"
   }
 
   @AfterEach
