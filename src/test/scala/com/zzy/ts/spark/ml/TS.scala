@@ -147,6 +147,12 @@ class TS {
 
     sql show "re4users"
 
+    val model = lfm.model
+
+    model.userFactors.show(false)
+    model.itemFactors.show(false)
+
+
   }
 
   @Test

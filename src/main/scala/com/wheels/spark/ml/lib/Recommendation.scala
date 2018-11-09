@@ -37,6 +37,8 @@ class Recommendation(ml: ML) {
 
     def dataframe(input: DataFrame): ALSModel = {
 
+      log.info("lfm: " + this)
+
       val Array(training, test) = input.randomSplit(Array(training_proportion, 1 - training_proportion))
 
       val als = new ALS()
