@@ -197,12 +197,45 @@ class TS {
     sql show "emp"
     sql ==> (
       s"""
-        |select
-        |org_id,${collect_json("height","country","user_id")} msg
-        |from emp
-        |group by org_id
-      """.stripMargin,"zzy_tb")
+         |select
+         |org_id,${collect_json("height", "country", "user_id")} msg
+         |from emp
+         |group by org_id
+      """.stripMargin, "zzy_tb")
     sql show "zzy_tb"
+  }
+
+  @Test
+  @DisplayName("测试super_join功能")
+  def ts_super_join(): Unit = {
+    DBS.incline_table(sql)
+
+    sql show "study_record"
+    sql show "user_dim"
+
+    sql ==> (
+      """
+        |select * from
+        |study_record r
+        |left join user_dim u
+        |on r.user_id=u.user_id
+      """.stripMargin,
+      "res")
+
+    val res_ct = sql count "res"
+
+    println(res_ct)
+
+    sql super_join("study_record", "user_dim", Seq("user_id"),
+      output_view = "super_res")
+
+    sql cache "super_res"
+
+    sql show "super_res"
+
+    val super_ct = sql count "super_res"
+
+    assertEquals(super_ct,res_ct)
   }
 
   @AfterEach

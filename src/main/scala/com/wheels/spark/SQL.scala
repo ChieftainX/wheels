@@ -8,6 +8,7 @@ import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.functions.{col, lit, broadcast, coalesce}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ListBuffer
@@ -35,12 +36,6 @@ class SQL(spark: SparkSession) extends Core(spark) {
     }
   }
 
-  private def format_source: String = spark.conf.get("wheel.spark.sql.hive.save.format")
-
-  private def coalesce_limit: Long = spark.conf.get("wheel.spark.sql.hive.save.file.lines.limit").toLong
-
-  private def refresh_view: Boolean = spark.conf.get("wheel.spark.sql.hive.save.refresh.view").toBoolean
-
   /**
     * 使用sql进行数据处理
     *
@@ -61,6 +56,12 @@ class SQL(spark: SparkSession) extends Core(spark) {
     if (view ne null) df.createOrReplaceTempView(view)
     df
   }
+
+  private def format_source: String = spark.conf.get("wheel.spark.sql.hive.save.format")
+
+  private def coalesce_limit: Long = spark.conf.get("wheel.spark.sql.hive.save.file.lines.limit").toLong
+
+  private def refresh_view: Boolean = spark.conf.get("wheel.spark.sql.hive.save.refresh.view").toBoolean
 
   /**
     * 视图写入hive
@@ -209,6 +210,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
   /**
     * 选取指定的列
+    *
     * @param view 视图名称
     * @param cols 要选择的列
     */
@@ -257,7 +259,6 @@ class SQL(spark: SparkSession) extends Core(spark) {
           }
           log.info(s"$table[$coalesce_num flies] is saved")
         } else {
-          import org.apache.spark.sql.functions.col
           if (p.values.isEmpty) {
             p ++ df.select(p.col.map(col): _*).distinct.collect
               .map(r => p.col.map(r.getAs[String]))
@@ -359,6 +360,89 @@ class SQL(spark: SparkSession) extends Core(spark) {
     log.info("all cache is cleared")
   }
 
+  def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
+                 join_type: String = "inner",
+                 output_view: String = "wheels_super_join_res",
+                 deal_ct: Int = 10 * 10000,
+                 deal_limit: Int = 10000): DataFrame = {
+
+    log.info(s"$bigger_view $join_type super join $smaller_view" +
+      s" with cols[${join_cols.mkString(",")}] powered by wheels")
+    log.info("begin analyze ......")
+
+    val bigger = this view bigger_view
+    val smaller = this view smaller_view
+
+    var bigger_ct = 0l
+    var smaller_ct = 0l
+    val bigger_mark = "wheels_super_join_bigger_mark"
+    val smaller_mark = "wheels_super_join_smaller_mark"
+
+    join_type.toLowerCase(Locale.ROOT) match {
+      case "inner" =>
+        val product = work()
+        this register(
+          aftercure(product.where(s"$bigger_mark=1 and $smaller_mark=1"))
+          , output_view)
+      case "left" =>
+        val product = work()
+        this register(
+          aftercure(product.where(s"$bigger_mark=1"))
+          , output_view)
+      case "full" =>
+        val product = work()
+        this register(aftercure(product), output_view)
+      case _ =>
+        throw IllegalParamException(s"your $join_type not support ! only support [inner,left,full]")
+    }
+
+    def work(): DataFrame = {
+      val bsn = bigger.schema.map(_.name)
+      val ssn = smaller.schema.map(_.name)
+      join_cols.foreach(c => {
+        if (!bsn.contains(c)) throw IllegalParamException(s"$c not in $bigger_view[${bsn.mkString(",")}]")
+        if (!ssn.contains(c)) throw IllegalParamException(s"$c not in $smaller_view[${ssn.mkString(",")}]")
+      })
+      bigger.persist(StorageLevel.DISK_ONLY)
+      smaller.cache
+      bigger_ct = bigger.count
+      smaller_ct = smaller.count
+      log.info(s"$bigger_view[$bigger_ct * ${bsn.length}] $join_type super join" +
+        s" $smaller_view[$smaller_ct * ${ssn.length}]")
+      val jcs = join_cols.map(col)
+      val ct_col = "count"
+      val mark = bigger.groupBy(jcs: _*).count
+        .where(s"$ct_col > $deal_ct")
+        .sort(col(ct_col).desc)
+        .limit(deal_limit)
+        .drop(ct_col)
+        .withColumn(smaller_mark, lit(1))
+      val smaller_ = smaller.join(mark, join_cols)
+      var p0 = smaller_.where(s"$smaller_mark is null")
+        .withColumn(smaller_mark, lit(1))
+      var p1 = smaller_.where(s"$smaller_mark = 1")
+      val ssn_ = ssn.filterNot(join_cols.contains) ++ Seq(smaller_mark)
+      ssn_.foreach(n => {
+        p0 = p0.withColumnRenamed(n, n + "_p0")
+        p1 = p1.withColumnRenamed(n, n + "_p1")
+      })
+      var product = bigger.withColumn(bigger_mark, lit(1))
+        .join(p0, join_cols, "outer")
+        .join(broadcast(p1), join_cols, "outer")
+      product.where(smaller_mark + "_p0=1").show()
+      ssn_.foreach(c => {
+        val p0c = c + "_p0"
+        val p1c = c + "_p1"
+        product = product.withColumn(c, coalesce(col(p0c), col(p1c))).drop(p0c, p1c)
+      })
+      product
+    }
+
+    def aftercure(df: DataFrame): DataFrame = df.drop(smaller_mark, bigger_mark)
+
+    this view output_view
+  }
+
 }
 
 object SQL {
@@ -429,8 +513,9 @@ object SQL {
 
   /**
     * 将指定列聚合为json
+    *
     * @param col 列名
     */
-  def collect_json(col:String*):String = s"to_json(collect_set(struct(${col.mkString(",")})))"
+  def collect_json(col: String*): String = s"to_json(collect_set(struct(${col.mkString(",")})))"
 
 }

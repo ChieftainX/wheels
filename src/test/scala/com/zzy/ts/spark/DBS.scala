@@ -55,4 +55,18 @@ object DBS {
     sql register(df, "movielens_ratings")
   }
 
+  def incline_table(sql: SQL): Unit = {
+    import sql.spark.implicits._
+    val study_record = (1 to 100)
+      .map(n => (n * n, n))
+      .flatMap(r => {
+        val user_id = "u-" + r._2
+        (1 to r._1).map(n => (user_id, "c-" + n))
+      }).toDF("user_id", "course_id")
+    val user_dim = (1 to 100).map(n => ("u-" + n, "name-" + n)).toDF("user_id", "user_name")
+
+    sql register(study_record, "study_record")
+    sql register(user_dim, "user_dim")
+  }
+
 }
