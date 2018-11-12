@@ -206,28 +206,22 @@ class TS {
   }
 
   @Test
-  @DisplayName("测试super_join功能")
-  def ts_super_join(): Unit = {
+  @DisplayName("测试super_join[left]功能")
+  def ts_super_join_left(): Unit = {
     DBS.incline_table(sql)
 
-    sql show "study_record"
-    sql show "user_dim"
+    val user_ct_ = sql count "user_dim"
 
-    sql ==> (
-      """
-        |select * from
-        |study_record r
-        |left join user_dim u
-        |on r.user_id=u.user_id
-      """.stripMargin,
-      "res")
+    sql ==> ("select * from user_dim where user_id > 'u-1'", "user_dim")
 
-    val res_ct = sql count "res"
+    val user_ct = sql count "user_dim"
 
-    println(res_ct)
+    val study_ct = sql count "study_record"
 
-    sql super_join("study_record", "user_dim", Seq("user_id"),
-      output_view = "super_res")
+    println("study count: " + study_ct)
+
+    sql super_join("study_record", "user_dim", Seq("user_id"), "left",
+      output_view = "super_res", deal_limit = 10, deal_ct = 1000)
 
     sql cache "super_res"
 
@@ -235,7 +229,65 @@ class TS {
 
     val super_ct = sql count "super_res"
 
-    assertEquals(super_ct,res_ct)
+    assertEquals(super_ct, study_ct)
+
+    sql ==> ("select * from super_res where user_name is null", "res_null")
+
+    assertEquals(sql count "res_null", user_ct_ - user_ct)
+  }
+
+  @Test
+  @DisplayName("测试super_join[inner]功能")
+  def ts_super_join_inner(): Unit = {
+    DBS.incline_table(sql)
+
+    sql ==> ("select * from study_record where user_id <> 'u-80'", "study_record")
+
+    val study_ct = sql count "study_record"
+
+    println("study count: " + study_ct)
+
+    sql super_join("study_record", "user_dim", Seq("user_id"),
+      output_view = "super_res", deal_limit = 10)
+
+    sql cache "super_res"
+
+    sql show "super_res"
+
+    val super_ct = sql count "super_res"
+
+    assertEquals(super_ct, study_ct)
+
+    sql ==> ("select * from super_res where user_name is null or course_id is null", "res_null")
+
+    assertEquals(sql count "res_null", 0l)
+  }
+
+  @Test
+  @DisplayName("测试super_join[outer]功能")
+  def ts_super_join_outer(): Unit = {
+    DBS.incline_table(sql)
+
+    sql ==> ("select * from study_record where user_id <> 'u-80'", "study_record")
+
+    val study_ct = sql count "study_record"
+
+    println("study count: " + study_ct)
+
+    sql super_join("study_record", "user_dim", Seq("user_id"), "full",
+      output_view = "super_res", deal_limit = 10)
+
+    sql cache "super_res"
+
+    sql show "super_res"
+
+    val super_ct = sql count "super_res"
+
+    assertEquals(super_ct, study_ct + 1)
+
+    sql ==> ("select * from super_res where user_name is null or course_id is null", "res_null")
+
+    assertEquals(sql count "res_null", 1l)
   }
 
   @AfterEach
