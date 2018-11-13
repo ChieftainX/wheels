@@ -170,10 +170,10 @@ class TS {
     sql read "emp"
     sql ==> ("select *,1 mk from emp", "emp")
 
-    sql <== ("emp","emp_tmp")
+    sql <== ("emp", "emp_tmp")
 
     sql read "emp_tmp"
-    sql <== ("emp_tmp","emp")
+    sql <== ("emp_tmp", "emp")
 
   }
 
@@ -262,7 +262,7 @@ class TS {
     println("study count: " + study_ct)
 
     sql super_join("study_record", "user_dim", Seq("user_id"),
-      output_view = "super_res", deal_limit = 10)
+      output_view = "super_res", deal_limit = 70, deal_ct = 1000)
 
     sql cache "super_res"
 

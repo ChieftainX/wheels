@@ -363,8 +363,9 @@ class SQL(spark: SparkSession) extends Core(spark) {
   def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
                  join_type: String = "inner",
                  output_view: String = "wheels_super_join_res",
-                 deal_ct: Int = 10 * 10000,
-                 deal_limit: Int = 10000): DataFrame = {
+                 deal_ct: Int = 10000,
+                 deal_limit: Int = 1000,
+                 bigger_clv: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame = {
 
     log.info(s"$bigger_view $join_type super join $smaller_view" +
       s" with cols[${join_cols.mkString(",")}] powered by wheels")
@@ -380,70 +381,62 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
     join_type.toLowerCase(Locale.ROOT) match {
       case "inner" =>
-        val product = work()
         this register(
           aftercure(product.where(s"$bigger_mark=1 and $smaller_mark=1"))
           , output_view)
       case "left" =>
-        val product = work()
         this register(
           aftercure(product.where(s"$bigger_mark=1"))
           , output_view)
       case "full" =>
-        val product = work()
         this register(aftercure(product), output_view)
       case _ =>
         throw IllegalParamException(s"your $join_type not support ! only support [inner,left,full]")
     }
 
-    def work(): DataFrame = {
+    def product: DataFrame = {
       val bsn = bigger.schema.map(_.name)
       val ssn = smaller.schema.map(_.name)
       join_cols.foreach(c => {
         if (!bsn.contains(c)) throw IllegalParamException(s"$c not in $bigger_view[${bsn.mkString(",")}]")
         if (!ssn.contains(c)) throw IllegalParamException(s"$c not in $smaller_view[${ssn.mkString(",")}]")
       })
-      if (bigger.storageLevel eq StorageLevel.NONE) bigger.persist(StorageLevel.DISK_ONLY)
+      if (bigger.storageLevel eq StorageLevel.NONE) bigger.persist(bigger_clv)
       if (smaller.storageLevel eq StorageLevel.NONE) smaller.cache
       bigger_ct = bigger.count
       smaller_ct = smaller.count
       log.info(s"$bigger_view[$bigger_ct * ${bsn.length}] $join_type super join" +
         s" $smaller_view[$smaller_ct * ${ssn.length}]")
       if (smaller_ct <= deal_limit) {
-        log.info("smaller count <= deal limit")
+        log.info(s"smaller[$smaller_ct] <= deal limit[$deal_limit], smaller overfly")
         bigger.withColumn(bigger_mark, lit(1))
           .join(broadcast(smaller).withColumn(smaller_mark, lit(1)), join_cols, "outer")
       } else {
-        log.info("smaller count > deal limit")
+        log.info(s"smaller[$smaller_ct] > deal limit[$deal_limit]")
         val jcs = join_cols.map(col)
         val ct_col = "count"
-        val mark = bigger.groupBy(jcs: _*).count
+        val mark_ = bigger.groupBy(jcs: _*).count
           .where(s"$ct_col > $deal_ct")
           .sort(col(ct_col).desc)
           .limit(deal_limit)
-          .drop(ct_col)
-          .withColumn(smaller_mark, lit(1))
-        val bc_mark = broadcast(mark)
-        val smaller_ = smaller.join(bc_mark, join_cols, "left")
+          .withColumn(smaller_mark, lit(1)).cache
+        val mark_ct = mark_.count
+        log.info(s"[mark: $mark_ct | $deal_limit] overfly")
+        val tp_10 = mark_.sort(col(ct_col).desc).limit(10).collect.map(_.getAs[Long](ct_col)).mkString(",")
+        val mark_min = mark_.sort(col(ct_col)).first.getAs[Long](ct_col)
+        log.info(s"[top 10: $tp_10 | min: $mark_min | $deal_ct]")
+        val mark = mark_.drop(ct_col)
+        val mark_bc = broadcast(mark)
+        val smaller_ = smaller.join(mark_bc, join_cols, "left")
         val smaller_p0 = smaller_.where(s"$smaller_mark is null")
           .withColumn(smaller_mark, lit(1))
         val smaller_p1 = smaller_.where(s"$smaller_mark = 1")
-//        val ssn_ = ssn.filterNot(join_cols.contains) ++ Seq(smaller_mark)
-//        ssn_.foreach(n => {
-//          p0 = p0.withColumnRenamed(n, n + "_p0")
-//          p1 = p1.withColumnRenamed(n, n + "_p1")
-//        })
-        val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(bc_mark, join_cols, "outer")
+        val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(mark_bc, join_cols, "outer")
         val bigger_p0 = bigger_.where(s"$smaller_mark is null").drop(smaller_mark)
         val bigger_p1 = bigger_.where(s"$smaller_mark = 1").drop(smaller_mark)
         val product_p0 = bigger_p0.join(smaller_p0, join_cols, "outer")
         val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "outer")
         val product = product_p0.union(product_p1)
-//        ssn_.foreach(c => {
-//          val p0c = c + "_p0"
-//          val p1c = c + "_p1"
-//          product = product.withColumn(c, coalesce(col(p0c), col(p1c))).drop(p0c, p1c)
-//        })
         product
       }
     }
