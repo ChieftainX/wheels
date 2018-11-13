@@ -152,6 +152,36 @@ class TS {
     model.userFactors.show(false)
     model.itemFactors.show(false)
 
+  }
+
+  @Test
+  @DisplayName("测试lfm [normalize flat]")
+  def ts_re_lfm_nf(): Unit = {
+    DBS.movielens_ratings(sql)
+
+    sql show "movielens_ratings"
+
+    val recommendation = ml.recommendation
+
+    val lfm = recommendation.lfm(
+      is_prediction = true,
+      implicit_prefs = true
+    )
+
+    lfm ==> "movielens_ratings"
+
+    lfm recommend4users(5, "re4users", normalize_flat = true)
+    lfm recommend4items(5, "re4items", normalize_flat = true)
+
+    sql desc "re4users"
+
+    sql show "re4users"
+    sql show "re4items"
+
+    val model = lfm.model
+
+    model.userFactors.show(false)
+    model.itemFactors.show(false)
 
   }
 

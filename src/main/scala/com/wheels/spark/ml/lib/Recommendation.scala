@@ -5,7 +5,7 @@ import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.recommendation.{ALS, ALSModel}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 
 /** *
@@ -37,7 +37,7 @@ class Recommendation(ml: ML) {
 
     def dataframe(input: DataFrame): ALSModel = {
 
-      log.info("lfm: " + this)
+      log.info(this)
 
       val Array(training, test) = input.randomSplit(Array(training_proportion, 1 - training_proportion))
 
@@ -71,16 +71,31 @@ class Recommendation(ml: ML) {
       model
     }
 
-    def recommend4users(num: Int = 50, output_view: String = null): DataFrame = {
+    def recommend4users(num: Int = 50, output_view: String = null, normalize_flat: Boolean = false): DataFrame = {
       val df = model.recommendForAllUsers(num)
-      if (output_view ne null) df.createOrReplaceTempView(output_view)
-      df
+      val rs = if (normalize_flat) nf(df).toDF(user_col, item_col, rating_col) else df
+      if (output_view ne null) rs.createOrReplaceTempView(output_view)
+      rs
     }
 
-    def recommend4items(num: Int = 50, output_view: String = null): DataFrame = {
+    def recommend4items(num: Int = 50, output_view: String = null, normalize_flat: Boolean = false): DataFrame = {
       val df = model.recommendForAllItems(num)
-      if (output_view ne null) df.createOrReplaceTempView(output_view)
-      df
+      val rs = if (normalize_flat) nf(df).toDF(item_col, user_col, rating_col) else df
+      if (output_view ne null) rs.createOrReplaceTempView(output_view)
+      rs
+    }
+
+    private def nf(df: DataFrame): Dataset[(Int, Int, Double)] = {
+      import spark.implicits._
+      df.flatMap(r => {
+        val res = r.getAs[Seq[Row]](1)
+        val dgs = res.map(_.getAs[Float](1))
+        val dg_max = dgs.max
+        val dg_min = dgs.min
+        val dg_mai = dg_max - dg_min
+        res.map(re => (r.getAs[Int](0), re.getAs[Int](0),
+          if (dg_mai == 0) 0.0 else (re.getAs[Float](1) - dg_min) / dg_mai))
+      })
     }
 
   }
