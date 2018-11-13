@@ -423,23 +423,27 @@ class SQL(spark: SparkSession) extends Core(spark) {
           .limit(deal_limit)
           .drop(ct_col)
           .withColumn(smaller_mark, lit(1))
-        val smaller_ = smaller.join(mark, join_cols, "left")
-        var p0 = smaller_.where(s"$smaller_mark is null")
+        val bc_mark = broadcast(mark)
+        val smaller_ = smaller.join(bc_mark, join_cols, "left")
+        val smaller_p0 = smaller_.where(s"$smaller_mark is null")
           .withColumn(smaller_mark, lit(1))
-        var p1 = smaller_.where(s"$smaller_mark = 1")
-        val ssn_ = ssn.filterNot(join_cols.contains) ++ Seq(smaller_mark)
-        ssn_.foreach(n => {
-          p0 = p0.withColumnRenamed(n, n + "_p0")
-          p1 = p1.withColumnRenamed(n, n + "_p1")
-        })
-        var product = bigger.withColumn(bigger_mark, lit(1))
-          .join(p0, join_cols, "outer")
-          .join(broadcast(p1), join_cols, "outer")
-        ssn_.foreach(c => {
-          val p0c = c + "_p0"
-          val p1c = c + "_p1"
-          product = product.withColumn(c, coalesce(col(p0c), col(p1c))).drop(p0c, p1c)
-        })
+        val smaller_p1 = smaller_.where(s"$smaller_mark = 1")
+//        val ssn_ = ssn.filterNot(join_cols.contains) ++ Seq(smaller_mark)
+//        ssn_.foreach(n => {
+//          p0 = p0.withColumnRenamed(n, n + "_p0")
+//          p1 = p1.withColumnRenamed(n, n + "_p1")
+//        })
+        val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(bc_mark, join_cols, "outer")
+        val bigger_p0 = bigger_.where(s"$smaller_mark is null").drop(smaller_mark)
+        val bigger_p1 = bigger_.where(s"$smaller_mark = 1").drop(smaller_mark)
+        val product_p0 = bigger_p0.join(smaller_p0, join_cols, "outer")
+        val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "outer")
+        val product = product_p0.union(product_p1)
+//        ssn_.foreach(c => {
+//          val p0c = c + "_p0"
+//          val p1c = c + "_p1"
+//          product = product.withColumn(c, coalesce(col(p0c), col(p1c))).drop(p0c, p1c)
+//        })
         product
       }
     }

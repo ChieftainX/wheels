@@ -123,7 +123,6 @@ class TS {
 
     sql show "movielens_ratings"
 
-
   }
 
   @Test

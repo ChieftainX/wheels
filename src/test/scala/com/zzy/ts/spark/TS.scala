@@ -164,6 +164,20 @@ class TS {
   }
 
   @Test
+  @DisplayName("测试保存同一张表到hive的功能")
+  def ts_same_table_save(): Unit = {
+    sql <== "emp"
+    sql read "emp"
+    sql ==> ("select *,1 mk from emp", "emp")
+
+    sql <== ("emp","emp_tmp")
+
+    sql read "emp_tmp"
+    sql <== ("emp_tmp","emp")
+
+  }
+
+  @Test
   @DisplayName("测试partition功能")
   def ts_partition(): Unit = {
     import com.wheels.spark.SQL.partition
