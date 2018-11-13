@@ -8,7 +8,7 @@ import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, lit, broadcast, coalesce}
+import org.apache.spark.sql.functions.{col, lit, broadcast}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ListBuffer
