@@ -45,17 +45,27 @@ class Features(ml: ML) {
   case class scaler(view: String, cols: Seq[String],
                     output_view: String = null, drop: Boolean = true, replace: Boolean = true) {
 
-    def mix_max: DataFrame = {
+    private val df = spark.sql(s"select *,${to_vector(cols, WHEELS_INPUT_COL)} from $view")
 
-      val df = spark.sql(s"select *,${to_vector(cols, WHEELS_INPUT_COL)} from $view")
+    def mix_max: DataFrame = {
       val scaler = new MinMaxScaler()
         .setInputCol(WHEELS_INPUT_COL)
         .setOutputCol(WHEELS_OUTPUT_COL)
       aftercure(scaler.fit(df).transform(df))
     }
 
-    def z_score: DataFrame = {
-      val df = spark.sql(s"select *,${to_vector(cols, WHEELS_INPUT_COL)} from $view")
+    def z_score: DataFrame = z_score(with_std = true, with_mean = false)
+
+    def z_score(with_std: Boolean, with_mean: Boolean): DataFrame = {
+      val scaler = new StandardScaler()
+        .setInputCol(WHEELS_INPUT_COL)
+        .setOutputCol(WHEELS_OUTPUT_COL)
+        .setWithStd(with_std)
+        .setWithMean(with_mean)
+      aftercure(scaler.fit(df).transform(df))
+    }
+
+    def max_abs: DataFrame = {
       val scaler = new MaxAbsScaler()
         .setInputCol(WHEELS_INPUT_COL)
         .setOutputCol(WHEELS_OUTPUT_COL)

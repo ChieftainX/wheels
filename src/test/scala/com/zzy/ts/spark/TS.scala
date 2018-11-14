@@ -355,6 +355,15 @@ class TS {
     sql show "emp_vs"
   }
 
+  @Test
+  @DisplayName("测试arrays_hits功能")
+  def ts_arrays_hits(): Unit = {
+    sql ==> ("select arrays_hits(array('aa','bb','cc'),array('dd','ee','ff'))", "ht")
+    sql show "ht"
+    sql ==> ("select arrays_hits(array('aa','bb','cc'),array('dd','aa','ff'))", "ht")
+    sql show "ht"
+  }
+
   @AfterEach
   def after(): Unit = {
     println("after exe:" + catalog.listTables.collect.toSeq)

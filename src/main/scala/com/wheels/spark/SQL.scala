@@ -7,7 +7,7 @@ import com.wheels.exception.{IllegalConfException, IllegalParamException, Realit
 import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
-import org.apache.spark.ml.linalg.{DenseVector, VectorUDT, Vectors}
+import org.apache.spark.ml.linalg.{DenseVector, Vectors}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{broadcast, col, lit}
 import org.apache.spark.storage.StorageLevel
@@ -559,6 +559,9 @@ object SQL {
 
   private def functions(spark: SparkSession): Unit = {
     spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
+    spark.udf.register("arrays_hits", (bigger: Seq[String], smaller: Seq[String]) => {
+      smaller.exists(bigger.contains)
+    })
     spark.udf.register("vector2array", (v: DenseVector) => v.values.toSeq)
 
   }
