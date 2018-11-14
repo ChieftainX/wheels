@@ -362,6 +362,26 @@ class SQL(spark: SparkSession) extends Core(spark) {
     log.info("all cache is cleared")
   }
 
+  def clear_view(view: String*): Unit = {
+    if (view.isEmpty) {
+      log.info("all view will be cleared")
+      catalog.listTables.filter(_.isTemporary).collect.map(_.name).foreach(v => {
+        catalog.dropTempView(v)
+        log.info(s"view [$v] is cleared")
+      })
+      log.info("all view is cleared")
+    } else {
+      view.foreach(v => {
+        if (catalog.tableExists(v)) {
+          if (catalog.getTable(v).isTemporary) {
+            catalog.dropTempView(v)
+            log.info(s"view [$v] is cleared")
+          } else log.warn(s"[$v] is not view, skip clear")
+        } else log.warn(s"view [$v] not exist, skip clear")
+      })
+    }
+  }
+
   def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
                  join_type: String = "inner",
                  output_view: String = "wheels_super_join_res",
@@ -424,22 +444,30 @@ class SQL(spark: SparkSession) extends Core(spark) {
           .withColumn(smaller_mark, lit(1)).cache
         val mark_ct = mark_.count
         log.info(s"[mark: $mark_ct | $deal_limit] overfly")
-        val tp_10 = mark_.sort(col(ct_col).desc).limit(10).collect.map(_.getAs[Long](ct_col)).mkString(",")
-        val mark_min = mark_.sort(col(ct_col)).first.getAs[Long](ct_col)
-        log.info(s"[top 10: $tp_10 | min: $mark_min | $deal_ct]")
-        val mark = mark_.drop(ct_col)
-        val mark_bc = broadcast(mark)
-        val smaller_ = smaller.join(mark_bc, join_cols, "left")
-        val smaller_p0 = smaller_.where(s"$smaller_mark is null")
-          .withColumn(smaller_mark, lit(1))
-        val smaller_p1 = smaller_.where(s"$smaller_mark = 1")
-        val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(mark_bc, join_cols, "outer")
-        val bigger_p0 = bigger_.where(s"$smaller_mark is null").drop(smaller_mark)
-        val bigger_p1 = bigger_.where(s"$smaller_mark = 1").drop(smaller_mark)
-        val product_p0 = bigger_p0.join(smaller_p0, join_cols, "outer")
-        val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "outer")
-        val product = product_p0.union(product_p1)
-        product
+        if (mark_ct > 0l) {
+          val tp_10 = mark_.sort(col(ct_col).desc).limit(10).collect.map(_.getAs[Long](ct_col)).mkString(",")
+          val mark_min = mark_.sort(col(ct_col)).first.getAs[Long](ct_col)
+          log.info(s"[top 10: $tp_10 | min: $mark_min | $deal_ct]")
+          val mark = mark_.drop(ct_col)
+          val mark_bc = broadcast(mark)
+          val smaller_ = smaller.join(mark_bc, join_cols, "left")
+          val smaller_p0 = smaller_.where(s"$smaller_mark is null")
+            .withColumn(smaller_mark, lit(1))
+          val smaller_p1 = smaller_.where(s"$smaller_mark = 1")
+          val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(mark_bc, join_cols, "outer")
+          val bigger_p0 = bigger_.where(s"$smaller_mark is null").drop(smaller_mark)
+          val bigger_p1 = bigger_.where(s"$smaller_mark = 1").drop(smaller_mark)
+          val product_p0 = bigger_p0.join(smaller_p0, join_cols, "outer")
+          val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "outer")
+          val product = product_p0.union(product_p1)
+          product
+        } else {
+          log.warn("mark = 0, use general join !")
+          bigger.withColumn(bigger_mark, lit(1))
+            .join(smaller.withColumn(smaller_mark, lit(1)),
+              join_cols, "outer")
+        }
+
       }
     }
 

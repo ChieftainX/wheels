@@ -217,15 +217,6 @@ class TS {
          |group by org_id
       """.stripMargin, "zzy_tb")
     sql show "zzy_tb"
-
-    sql ==> (
-      s"""
-         |select
-         |org_id,${collect_json(Seq("height", "country", "user_id"),"from")}
-         |from emp
-         |group by org_id
-      """.stripMargin, "res_tb")
-    sql show "res_tb"
   }
 
   @Test
@@ -313,36 +304,30 @@ class TS {
     assertEquals(sql count "res_null", 1l)
   }
 
+  @Test
+  @DisplayName("测试clear view功能")
+  def ts_clear_view(): Unit = {
+    val df = sql view "emp"
+    sql register(df, "emp_0")
+    sql register(df, "emp_1")
+    sql register(df, "emp_2")
+    sql register(df, "emp_3")
+    sql register(df, "emp_4")
+    println("after exe:" + catalog.listTables.collect.map(_.name).toSeq)
 
+    sql.clear_view("emp_2", "emp_3", "emp_555")
 
+    println("clear:" + catalog.listTables.collect.map(_.name).toSeq)
 
+    assertEquals(catalog.listTables.filter(_.isTemporary).count, 4)
 
+    sql.clear_view("emp")
 
+    assertEquals(catalog.listTables.filter(_.isTemporary).count, 3)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    sql.clear_view()
+    assertEquals(catalog.listTables.filter(_.isTemporary).count, 0l)
+  }
 
   @Test
   @DisplayName("测试to_vector功能")
@@ -351,7 +336,7 @@ class TS {
     sql show "emp_v"
     sql ==> (s"select *,1.8 nb1,4 nb2,0 nb3 from emp", "emp")
     sql show "emp"
-    sql ==> (s"select *,${to_vector(Seq("nb1", "nb2", "nb3", "height","user_id"),"vectors")} from emp", "emp_vs")
+    sql ==> (s"select *,${to_vector(Seq("nb1", "nb2", "nb3", "height", "user_id"), "vectors")} from emp", "emp_vs")
     sql show "emp_vs"
   }
 
@@ -367,7 +352,6 @@ class TS {
   @AfterEach
   def after(): Unit = {
     println("after exe:" + catalog.listTables.collect.toSeq)
-
   }
 
   @AfterAll
