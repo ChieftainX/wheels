@@ -73,7 +73,7 @@ class Features(ml: ML) {
     }
 
     private def aftercure(scaled: DataFrame): DataFrame = {
-      var scaled_ = scaled.withColumn(WHEELS_TMP_COL, expr(vector2array(WHEELS_OUTPUT_COL)))
+      var scaled_ = scaled.withColumn(WHEELS_TMP_COL, expr(s"vector2array($WHEELS_OUTPUT_COL)"))
       var i = 0
       cols.foreach(c => {
         val c_ = if (replace) c else c + "_scaled"

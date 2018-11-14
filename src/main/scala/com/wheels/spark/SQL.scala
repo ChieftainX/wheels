@@ -8,6 +8,7 @@ import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.{DenseVector, Vectors}
+import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{broadcast, col, lit}
 import org.apache.spark.storage.StorageLevel
@@ -447,15 +448,25 @@ class SQL(spark: SparkSession) extends Core(spark) {
     this view output_view
   }
 
+  case class functions(spark: SparkSession) {
+    val to_vector: UserDefinedFunction =
+      spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
+    val arrays_hits: UserDefinedFunction =
+      spark.udf.register("arrays_hits", (bigger: Seq[String], smaller: Seq[String]) => {
+      smaller.exists(bigger.contains)
+    })
+    val vector2array: UserDefinedFunction =
+      spark.udf.register("vector2array", (v: DenseVector) => v.values.toSeq)
+
+  }
+
+  val udf: functions = functions(spark)
+
 }
 
 object SQL {
 
-  def apply(spark: SparkSession): SQL = {
-    val sql = new SQL(spark)
-    functions(spark)
-    sql
-  }
+  def apply(spark: SparkSession): SQL = new SQL(spark)
 
   lazy val log: Logger = Log.get("wheel>spark>sql")
 
@@ -540,9 +551,6 @@ object SQL {
   def to_vector(cols: Seq[String], alias: String = null): String =
     s"to_vector(array(${cols_str(cols, "double")})) ${set_alias(alias)}"
 
-  def vector2array(col: String, alias: String = null): String =
-    s"vector2array(${col_escape(col)}) ${set_alias(alias)}"
-
   private val DEFAULT_COL_NAME = "wheels_col"
 
   private def set_alias(alias: String): String = if (alias eq null) DEFAULT_COL_NAME else s"`$alias`"
@@ -555,15 +563,6 @@ object SQL {
     val ces = cols_escape(cols)
     val cols_ = if (tp eq null) ces else ces.map(c => s"cast($c as $tp)")
     cols_.mkString(",")
-  }
-
-  private def functions(spark: SparkSession): Unit = {
-    spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
-    spark.udf.register("arrays_hits", (bigger: Seq[String], smaller: Seq[String]) => {
-      smaller.exists(bigger.contains)
-    })
-    spark.udf.register("vector2array", (v: DenseVector) => v.values.toSeq)
-
   }
 
   lazy val WHEELS_INPUT_COL = "wheels_input_col"
