@@ -362,6 +362,11 @@ class SQL(spark: SparkSession) extends Core(spark) {
     log.info("all cache is cleared")
   }
 
+  /**
+    * 清除视图
+    * 无参数会清除所有视图
+    * @param view 视图名称
+    */
   def clear_view(view: String*): Unit = {
     if (view.isEmpty) {
       log.info("all view will be cleared")
