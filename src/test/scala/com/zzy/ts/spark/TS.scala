@@ -217,6 +217,15 @@ class TS {
          |group by org_id
       """.stripMargin, "zzy_tb")
     sql show "zzy_tb"
+
+    sql ==> (
+      s"""
+         |select
+         |org_id,${collect_json(Seq("height", "country", "user_id"),"from")}
+         |from emp
+         |group by org_id
+      """.stripMargin, "res_tb")
+    sql show "res_tb"
   }
 
   @Test
@@ -304,9 +313,52 @@ class TS {
     assertEquals(sql count "res_null", 1l)
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  @Test
+  @DisplayName("测试to_vector功能")
+  def ts_to_vector(): Unit = {
+    sql ==> (s"select ${to_vector(Seq("height"))} from emp", "emp_v")
+    sql show "emp_v"
+    sql ==> (s"select *,1.8 nb1,4 nb2,0 nb3 from emp", "emp")
+    sql show "emp"
+    sql ==> (s"select *,${to_vector(Seq("nb1", "nb2", "nb3", "height","user_id"),"vectors")} from emp", "emp_vs")
+    sql show "emp_vs"
+  }
+
   @AfterEach
   def after(): Unit = {
     println("after exe:" + catalog.listTables.collect.toSeq)
+
   }
 
   @AfterAll

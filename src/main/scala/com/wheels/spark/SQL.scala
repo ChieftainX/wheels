@@ -7,8 +7,9 @@ import com.wheels.exception.{IllegalConfException, IllegalParamException, Realit
 import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
+import org.apache.spark.ml.linalg.{DenseVector, VectorUDT, Vectors}
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{col, lit, broadcast}
+import org.apache.spark.sql.functions.{broadcast, col, lit}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ListBuffer
@@ -450,6 +451,12 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
 object SQL {
 
+  def apply(spark: SparkSession): SQL = {
+    val sql = new SQL(spark)
+    functions(spark)
+    sql
+  }
+
   lazy val log: Logger = Log.get("wheel>spark>sql")
 
   /**
@@ -517,8 +524,48 @@ object SQL {
   /**
     * 将指定列聚合为json
     *
+    * @param cols 列名
+    */
+  def collect_json(cols: Seq[String], alias: String = null): String =
+    s"to_json(collect_set(struct(${cols_str(cols)}))) ${set_alias(alias)}"
+
+  /**
+    * 将指定列聚合为json
+    *
     * @param col 列名
     */
-  def collect_json(col: String*): String = s"to_json(collect_set(struct(${col.mkString(",")})))"
+  def collect_json(col: String*): String =
+    s"to_json(collect_set(struct(${cols_str(col)})))"
+
+  def to_vector(cols: Seq[String], alias: String = null): String =
+    s"to_vector(array(${cols_str(cols, "double")})) ${set_alias(alias)}"
+
+  def vector2array(col: String, alias: String = null): String =
+    s"vector2array(${col_escape(col)}) ${set_alias(alias)}"
+
+  private val DEFAULT_COL_NAME = "wheels_col"
+
+  private def set_alias(alias: String): String = if (alias eq null) DEFAULT_COL_NAME else s"`$alias`"
+
+  private def col_escape(col: String): String = s"`$col`"
+
+  private def cols_escape(cols: Seq[String]): Seq[String] = cols.map(col_escape)
+
+  private def cols_str(cols: Seq[String], tp: String = null): String = {
+    val ces = cols_escape(cols)
+    val cols_ = if (tp eq null) ces else ces.map(c => s"cast($c as $tp)")
+    cols_.mkString(",")
+  }
+
+  private def functions(spark: SparkSession): Unit = {
+    spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
+    spark.udf.register("vector2array", (v: DenseVector) => v.values.toSeq)
+
+  }
+
+  lazy val WHEELS_INPUT_COL = "wheels_input_col"
+  lazy val WHEELS_OUTPUT_COL = "wheels_output_col"
+  lazy val WHEELS_TMP_COL = "wheels_tmp_col"
+
 
 }

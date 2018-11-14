@@ -238,6 +238,44 @@ class TS {
 
   }
 
+  @Test
+  @DisplayName("测试mix_max")
+  def ts_scaler_mix_max(): Unit = {
+
+    val features = ml.features
+
+    DBS.movielens_ratings(sql)
+    val df = sql ==> ("select concat('u-',user_id) uid,rand() rd," +
+      "user_id f1,item_id f2,rating-2 f3,ts f4 from movielens_ratings")
+    sql register(df.orderBy("rd").limit(10), "ia_tb")
+
+    sql show "ia_tb"
+    features.scaler("ia_tb", Seq("f1", "f2", "f3")).mix_max
+    sql show "ia_tb"
+    features.scaler("ia_tb", Seq("f4", "rd"), drop = false, replace = false).mix_max
+    sql show "ia_tb"
+
+  }
+
+  @Test
+  @DisplayName("测试z_score")
+  def ts_scaler_z_score(): Unit = {
+
+    val features = ml.features
+
+    DBS.movielens_ratings(sql)
+    val df = sql ==> ("select concat('u-',user_id) uid,rand() rd," +
+      "user_id f1,item_id f2,rating-2 f3,ts f4 from movielens_ratings")
+    sql register(df.orderBy("rd").limit(10), "ia_tb")
+
+    sql show "ia_tb"
+    features.scaler("ia_tb", Seq("f1", "f2", "f3")).z_score
+    sql show "ia_tb"
+    features.scaler("ia_tb", Seq("f4", "rd"), drop = false, replace = false).z_score
+    sql show "ia_tb"
+
+  }
+
   @AfterEach
   def after(): Unit = {}
 

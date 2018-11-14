@@ -16,15 +16,17 @@ class Core(val spark: SparkSession) {
 
   /**
     * 是否支持sql模块功能
+    *
     * @return sql对象
     */
   def support_sql: SQL = {
     log.info("this wheel[spark] support sql")
-    new SQL(spark)
+    SQL(spark)
   }
 
   /**
     * 获取 catalog 对象
+    *
     * @return catalog
     */
   def catalog: Catalog = spark.catalog
@@ -46,11 +48,12 @@ object Core {
 
   /**
     * 创建核心功能对象
-    * @param name app名称
-    * @param conf runtime 配置信息
+    *
+    * @param name         app名称
+    * @param conf         runtime 配置信息
     * @param hive_support 是否开启hive支持
-    * @param database database名称
-    * @param log_less 是否需要少量的日志输出
+    * @param database     database名称
+    * @param log_less     是否需要少量的日志输出
     * @return 核心功能对象
     */
   def apply(name: String = s"run spark @ ${Time.now}",
@@ -88,10 +91,10 @@ object Core {
   private def default_conf(builder: Builder): Unit = {
     builder
       .config("spark.sql.broadcastTimeout", "3000")
-      .config("wheel.spark.sql.hive.save.mode","overwrite")
-      .config("wheel.spark.sql.hive.save.format","parquet")
-      .config("wheel.spark.sql.hive.save.file.lines.limit","1000000")
-      .config("wheel.spark.sql.hive.save.refresh.view","false")
+      .config("wheel.spark.sql.hive.save.mode", "overwrite")
+      .config("wheel.spark.sql.hive.save.format", "parquet")
+      .config("wheel.spark.sql.hive.save.file.lines.limit", "1000000")
+      .config("wheel.spark.sql.hive.save.refresh.view", "false")
   }
 
 }
