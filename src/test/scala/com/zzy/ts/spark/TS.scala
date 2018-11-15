@@ -352,6 +352,7 @@ class TS {
   @AfterEach
   def after(): Unit = {
     println("after exe:" + catalog.listTables.collect.toSeq)
+    sql.clear_view()
   }
 
   @AfterAll
