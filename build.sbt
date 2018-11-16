@@ -1,6 +1,6 @@
 name := "wheels"
 
-version := "0.1.11"
+version := "0.1.13"
 
 scalaVersion := "2.11.8"
 

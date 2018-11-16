@@ -365,6 +365,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
   /**
     * 清除视图
     * 无参数会清除所有视图
+    *
     * @param view 视图名称
     */
   def clear_view(view: String*): Unit = {
@@ -486,8 +487,8 @@ class SQL(spark: SparkSession) extends Core(spark) {
       spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
     val arrays_hits: UserDefinedFunction =
       spark.udf.register("arrays_hits", (bigger: Seq[String], smaller: Seq[String]) => {
-      smaller.exists(bigger.contains)
-    })
+        smaller.exists(bigger.contains)
+      })
     val vector2array: UserDefinedFunction =
       spark.udf.register("vector2array", (v: DenseVector) => v.values.toSeq)
 
@@ -590,7 +591,7 @@ object SQL {
 
   private def col_escape(col: String): String = s"`$col`"
 
-  private def cols_escape(cols: Seq[String]): Seq[String] = cols.map(col_escape)
+  private def cols_escape(cols: Seq[String]): Seq[String] = cols.map(c => if (c.contains(" ")) c else col_escape(c))
 
   private def cols_str(cols: Seq[String], tp: String = null): String = {
     val ces = cols_escape(cols)

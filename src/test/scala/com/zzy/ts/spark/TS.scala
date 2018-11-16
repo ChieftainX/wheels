@@ -208,11 +208,14 @@ class TS {
   @Test
   @DisplayName("测试collect_json功能")
   def ts_2json(): Unit = {
+
+    sql ==> ("select *,123 `from` from emp", "emp")
     sql show "emp"
+
     sql ==> (
       s"""
          |select
-         |org_id,${collect_json("height", "country", "user_id")} msg
+         |org_id,${collect_json("height h", "country", "user_id", "from")} msg
          |from emp
          |group by org_id
       """.stripMargin, "zzy_tb")
