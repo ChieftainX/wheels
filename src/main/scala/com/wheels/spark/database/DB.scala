@@ -13,6 +13,10 @@ import org.apache.hadoop.hbase.mapreduce.TableOutputFormat
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.mapreduce.{MRJobConfig, OutputFormat}
 import redis.clients.jedis.{HostAndPort, JedisCluster}
+import java.util.Properties
+
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class DB(sql: SQL) {
@@ -21,14 +25,15 @@ class DB(sql: SQL) {
 
   /**
     * redis 配置项
-    * @param nodes redis集群地址及端口
-    * @param key_col 待写入的key对应的列，默认为k
-    * @param value_col 待写入的value对应的列，默认为v
+    *
+    * @param nodes        redis集群地址及端口
+    * @param key_col      待写入的key对应的列，默认为k
+    * @param value_col    待写入的value对应的列，默认为v
     * @param life_seconds 待写入数据的生命周期，默认为不过期
-    * @param timeout 连接redis超时时间
+    * @param timeout      连接redis超时时间
     * @param max_attempts 最大重试次数
-    * @param pwd redis 秘钥
-    * @param batch 写入数据批次，默认20
+    * @param pwd          redis 秘钥
+    * @param batch        写入数据批次，默认20
     */
   case class redis(
                     nodes: Seq[(String, Int)],
@@ -73,14 +78,15 @@ class DB(sql: SQL) {
     }
   }
 
-  /***
+  /** *
     * hbase 配置项
+    *
     * @param hbase_zookeeper_quorum zk地址串，多个地址使用英文逗号分隔
-    * @param port zk端口好
-    * @param rk_col row key 所对应的列名，默认为rk
-    * @param family_name 列族名称，默认为cf
-    * @param split_keys 预分区字母，默认为0～9，a～f
-    * @param overwrite 是否采用完全覆盖写入方式（每次写入前重建表），默认为false
+    * @param port                   zk端口好
+    * @param rk_col                 row key 所对应的列名，默认为rk
+    * @param family_name            列族名称，默认为cf
+    * @param split_keys             预分区字母，默认为0～9，a～f
+    * @param overwrite              是否采用完全覆盖写入方式（每次写入前重建表），默认为false
     */
   case class hbase(hbase_zookeeper_quorum: String,
                    port: Int = 2181,
@@ -164,6 +170,72 @@ class DB(sql: SQL) {
                      f: Row => (ImmutableBytesWritable, Put)): Unit = {
       init(table)
       df.rdd.map(f).saveAsNewAPIHadoopDataset(save_job(table))
+    }
+  }
+
+  /**
+    * 用于0.10+版本的kafka
+    *
+    * @param servers broker地址，多个用逗号分隔
+    * @param topic   topic名称
+    */
+  case class kafka(servers: String, topic: String) {
+
+    def <==(view: String): Unit = {
+      val df = spark.table(view)
+      dataframe(df)
+    }
+
+    def dataframe(df: DataFrame): Unit = {
+      df.toJSON.toDF("value")
+        .write.format("kafka")
+        .option("kafka.bootstrap.servers", servers)
+        .option("topic", topic)
+        .save()
+    }
+  }
+
+  /**
+    * 用于低于0.10版本的kafka
+    *
+    * @param servers broker地址，多个用逗号分隔
+    * @param topic   topic名称
+    */
+  case class kafka_low(servers: String, topic: String, batch: Int = 10) {
+
+    def <==(view: String): Unit = {
+      val df = spark.table(view)
+      dataframe(df)
+    }
+
+    def dataframe(df: DataFrame): Unit = {
+      val output = df.toJSON.cache
+      val servers_ = servers
+      val topic_ = topic
+      output.count
+      output.coalesce(batch).foreachPartition(values => {
+        val props = new Properties()
+        props.put("metadata.broker.list", servers_)
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers_)
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)
+        var producer: KafkaProducer[String, String] = null
+        try {
+          producer = new KafkaProducer[String, String](props)
+          while (values.hasNext) {
+            val value = values.next
+            producer.send(new ProducerRecord[String, String](topic_, value))
+          }
+        } catch {
+          case e: Exception =>
+            throw e
+        } finally {
+          if (producer ne null) producer.close()
+        }
+
+      })
+      output.unpersist
+
     }
   }
 

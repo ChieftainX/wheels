@@ -54,7 +54,7 @@ class TS {
       life_seconds = 100 * 60
     )
 
-     redis <== "w2redis"
+    redis <== "w2redis"
 
 
     val df = sql ==>
@@ -98,6 +98,28 @@ class TS {
     hbase <== "w2hbase"
 
     hbase dataframe(df, "emp")
+  }
+
+  @Test
+  @DisplayName("测试dataframe -> kafka[>=0.10]")
+  def ts_kafka(): Unit = {
+    DBS.emp(sql)
+
+    val kafka = database.kafka(servers = "localhost:9092", "my-topic")
+
+    kafka <== "emp"
+
+  }
+
+  @Test
+  @DisplayName("测试dataframe -> kafka[<0.10]")
+  def ts_kafka_low(): Unit = {
+    DBS.emp(sql)
+
+    val kafka = database.kafka_low(servers = "localhost:9092", "my-topic")
+
+    kafka <== "emp"
+
   }
 
   @AfterEach
