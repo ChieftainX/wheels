@@ -460,11 +460,11 @@ class SQL(spark: SparkSession) extends Core(spark) {
           val smaller_p0 = smaller_.where(s"$smaller_mark is null")
             .withColumn(smaller_mark, lit(1))
           val smaller_p1 = smaller_.where(s"$smaller_mark = 1")
-          val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(mark_bc, join_cols, "outer")
+          val bigger_ = bigger.withColumn(bigger_mark, lit(1)).join(mark_bc, join_cols, "left")
           val bigger_p0 = bigger_.where(s"$smaller_mark is null").drop(smaller_mark)
           val bigger_p1 = bigger_.where(s"$smaller_mark = 1").drop(smaller_mark)
           val product_p0 = bigger_p0.join(smaller_p0, join_cols, "outer")
-          val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "outer")
+          val product_p1 = bigger_p1.join(broadcast(smaller_p1), join_cols, "left")
           val product = product_p0.union(product_p1)
           product
         } else {
