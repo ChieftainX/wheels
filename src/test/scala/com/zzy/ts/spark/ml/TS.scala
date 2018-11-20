@@ -250,8 +250,11 @@ class TS {
     sql register(df.orderBy("rd").limit(10), "ia_tb")
 
     sql show "ia_tb"
-    features.scaler("ia_tb", Seq("f1", "f2", "f3")).mix_max
+    val scaler = features.scaler("ia_tb", Seq("f1", "f2", "f3"))
+    println(s"min=${scaler.min},max=${scaler.max}")
+    scaler.mix_max
     sql show "ia_tb"
+    println(s"min=${scaler.min},max=${scaler.max}")
     features.scaler("ia_tb", Seq("f4", "rd"), drop = false, replace = false).mix_max
     sql show "ia_tb"
 
@@ -269,7 +272,9 @@ class TS {
     sql register(df.orderBy("rd").limit(10), "ia_tb")
 
     sql show "ia_tb"
-    features.scaler("ia_tb", Seq("f1", "f2", "f3")).z_score(with_std = true,with_mean = true)
+    val scaler = features.scaler("ia_tb", Seq("f1", "f2", "f3"))
+    scaler.z_score(with_std = true, with_mean = true)
+    println(s"mean=${scaler.mean},std=${scaler.std}")
     sql show "ia_tb"
     features.scaler("ia_tb", Seq("f4", "rd"), drop = false, replace = false).z_score
     sql show "ia_tb"
@@ -288,7 +293,9 @@ class TS {
     sql register(df.orderBy("rd").limit(10), "ia_tb")
 
     sql show "ia_tb"
-    features.scaler("ia_tb", Seq("f1", "f2", "f3")).max_abs
+    val scaler = features.scaler("ia_tb", Seq("f1", "f2", "f3"))
+    scaler.max_abs
+    println(s"maxabs=${scaler.maxabs}")
     sql show "ia_tb"
     features.scaler("ia_tb", Seq("f4", "rd"), drop = false, replace = false).max_abs
     sql show "ia_tb"

@@ -38,6 +38,30 @@ class Core(val spark: SparkSession) {
     log.info("spark will stop")
     spark.stop
     log.info("spark is stop")
+    println(
+      """
+        |
+        |         ┌─┐       ┌─┐
+        |      ┌──┘ ┴───────┘ ┴──┐
+        |      │                 │
+        |      │        ━        │
+        |      │    >       <    │
+        |      │                 │
+        |      │    ... ⌒ ...    │
+        |      │                 │
+        |      └───┐         ┌───┘
+        |          │         │
+        |          │         │ Code is far away from bug with the animal protecting!
+        |          │         │
+        |          │         └──────────────┐
+        |          │                        │
+        |          │                        ├─┐
+        |          │                        ┌─┘
+        |          │                        │
+        |          └─┐  ┐  ┌───────┬──┐  ┌──┘
+        |            │ ─┤ ─┤       │ ─┤ ─┤
+        |            └──┴──┘       └──┴──┘
+      """.stripMargin)
   }
 
 }
@@ -68,6 +92,30 @@ object Core {
         "org" -> Level.WARN
       ))
     }
+    println(
+      """
+        |
+        |         ┌─┐       ┌─┐
+        |      ┌──┘ ┴───────┘ ┴──┐
+        |      │                 │
+        |      │       ───       │
+        |      │  ─┬┘       └┬─  │
+        |      │                 │
+        |      │       ─┴─       │
+        |      │                 │
+        |      └───┐         ┌───┘
+        |          │         │
+        |          │         │   神兽保佑
+        |          │         │   代码无BUG!
+        |          │         └──────────────┐
+        |          │                        │
+        |          │                        ├─┐
+        |          │                        ┌─┘
+        |          │                        │
+        |          └─┐  ┐  ┌───────┬──┐  ┌──┘
+        |            │ ─┤ ─┤       │ ─┤ ─┤
+        |            └──┴──┘       └──┴──┘
+      """.stripMargin)
     val spark: SparkSession = {
       val builder = SparkSession.builder()
       if (hive_support) {

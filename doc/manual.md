@@ -19,13 +19,17 @@
   - [开启方式](#sql-ex-open)
   - [聚合为json字符串](#sql-ex-collect-json)
   - [多列转向量](#sql-ex-to-vector)  
+  - [super-join](#sql-ex-super-join)  
 - ***[Database 模块](#db-model)***
   - [开启方式](#db-model-open)
   - [hbase](#hbase)
   - [redis](#redis)
 - ***[ML 模块](#ml-model)***
   - [开启方式](#ml-model-open)
-  - [联合加权](#union-weighing)
+  - [特征处理](#ml-model-f)
+    - [索引化](#ml-model-f-indexer)
+    - [标准化](#ml-model-f-scaler)
+    - [联合加权](#ml-model-f-union-weighing)
   
 ## <a name='introduction'>简介</a>
 
@@ -453,6 +457,42 @@ sql show "emp_vs"
 +-------+------+-------+------+---+---+---+-----------------------+
 
 ```
+### <a name='sql-ex-super-join'>super-join</a>
+可以自动解决两个数据集left，inner，full的join操作产生的数据倾斜
+
+使用方式：
+
+```
+//my_table_1: 较大的视图名称
+//my_table_2: 较小的视图名称
+//Seq("join_key_1","join_key_2"): join的列
+//result_view: 输出视图名称
+
+sql super_join("my_table_1", "my_table_2", Seq("join_key_1","join_key_2"),
+      output_view = "result_view")
+```
+
+更多配置：
+
+```
+/**
+    * super-join 功能（可以自动解决两个数据集left，inner，full的join操作产生的数据倾斜）
+    * @param bigger_view 较大的视图名称
+    * @param smaller_view 较小的视图名称
+    * @param join_cols join的列
+    * @param join_type join的类型，暂时仅支持left，inner，full。默认为inner
+    * @param output_view 输出视图名称，默认为wheels_super_join_res
+    * @param deal_ct 判定为倾斜的阀值，默认为10000
+    * @param deal_limit 做特殊处理数据量的上限，默认为1000
+    * @param bigger_clv 较大视图的缓存级别，默认为MEMORY_AND_DISK
+    */
+  def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
+                 join_type: String = "inner",
+                 output_view: String = "wheels_super_join_res",
+                 deal_ct: Int = 10000,
+                 deal_limit: Int = 1000,
+                 bigger_clv: StorageLevel = StorageLevel.MEMORY_AND_DISK): DataFrame
+```
 
 ## <a name='db-model'>Database 模块</a>
 
@@ -619,7 +659,142 @@ redis <== "w2redis"
 val ml: ML = sql.support_ml
 ```
 
-### <a name='union-weighing'>联合加权</a>
+### <a name='ml-model-f'>特征处理</a>
+
+创建特征处理对象：
+
+```
+val features = ml.features
+```
+#### <a name='ml-model-f-indexer'>索引化</a>
+
+为数据集中某一字符串类型的列添加数字索引，或者将数字索引还原成原始数据。
+
+##### 字符列->索引列
+
+```
+val indexer = features.indexer()
+
+//view_name：视图名称
+//col_name：待处理列的名称
+
+indexer s2i("view_name", "col_name")
+
+//默认输出列名为 col_name_index
+```
+
+更多配置项
+
+```
+/**
+  * 字符列->索引列
+  * @param view 视图名称
+  * @param input_col 输入列
+  * @param output_col 输出列，默认为input_col + "_index"
+  * @param output_view 输出视图
+  * @return 转化模型
+  */
+def s2i(view: String, input_col: String,
+        output_col: String = null, output_view: String = null,
+        handle_invalid: String = "error"): StringIndexerModel
+```
+
+##### 索引列->字符列
+
+```
+val indexer = features.indexer()
+
+//view_name：视图名称
+//col_name：待处理列的名称
+
+indexer i2s("view_name", "col_name")
+
+//默认输出列名为 col_name_str
+```
+
+更多配置项
+
+```
+/**
+ * 索引列->字符列
+ * @param view 视图名称
+ * @param input_col 输入列
+ * @param output_col 输出列，默认为input_col + "_str"
+ * @param output_view 输出视图
+ * @param labels 索引标签向量
+ * @return 转换后的dataframe
+ */
+def i2s(view: String, input_col: String,
+          output_col: String = null, output_view: String = null,
+          labels: Array[String] = null): DataFrame
+```
+#### <a name='ml-model-f-scaler'>标准化</a>
+
+对指定对列进行标准化处理，创建对象
+
+```
+//view_name: 视图名称
+//Seq("col_name1", "col_name2", "col_name3")：输入列的名称
+
+val scaler = features.scaler("view_name", Seq("col_name1", "col_name2", "col_name3"))
+```
+
+##### z-score
+
+```
+//返回值：处理后的dataframe
+//建议直接使用输入视图名继续进行数据处理
+scaler.z_score
+```
+
+获取mean和std,返回数据为Seq[Double]类型，顺序与输入列顺序一致
+
+```
+scaler.mean
+scaler.std
+```
+
+更多配置：
+
+```
+/**
+  * z-score
+  *
+  * @param with_std  是否将数据缩放到单位标准差
+  * @param with_mean 缩放前是否以均值为中心
+  * @return 处理后的dataframe
+  */
+def z_score(with_std: Boolean, with_mean: Boolean): DataFrame
+```
+
+##### MinMax
+
+```
+//返回值：处理后的dataframe
+//建议直接使用输入视图名继续进行数据处理
+scaler.mix_max
+```
+
+获取min和max,返回数据为Seq[Double]类型，顺序与输入列顺序一致
+
+```
+scaler.min
+scaler.max
+```
+
+##### MaxAbs
+
+```
+//返回值：处理后的dataframe
+//建议直接使用输入视图名继续进行数据处理
+scaler.max_abs
+```
+获取绝对值的最大值,返回数据为Seq[Double]类型，顺序与输入列顺序一致
+```
+scaler.maxabs
+```
+
+#### <a name='ml-model-f-union-weighing'>联合加权</a>
 
 根据数据类型及每种类型对应的权重值对指定数据集进行联合加权操作。默认合并方式是加权后进行求和，该操作支持自定义。
 

@@ -388,6 +388,17 @@ class SQL(spark: SparkSession) extends Core(spark) {
     }
   }
 
+  /**
+    * super-join 功能（可以自动解决两个数据集left，inner，full的join操作产生的数据倾斜）
+    * @param bigger_view 较大的视图名称
+    * @param smaller_view 较小的视图名称
+    * @param join_cols join的列
+    * @param join_type join的类型，暂时仅支持left，inner，full。默认为inner
+    * @param output_view 输出视图名称，默认为wheels_super_join_res
+    * @param deal_ct 判定为倾斜的阀值，默认为10000
+    * @param deal_limit 做特殊处理数据量的上限，默认为1000
+    * @param bigger_clv 较大视图的缓存级别，默认为MEMORY_AND_DISK
+    */
   def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
                  join_type: String = "inner",
                  output_view: String = "wheels_super_join_res",
