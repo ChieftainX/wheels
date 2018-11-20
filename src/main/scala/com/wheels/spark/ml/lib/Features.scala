@@ -2,9 +2,10 @@ package com.wheels.spark.ml.lib
 
 import com.wheels.spark.ml.ML
 import org.apache.spark.ml.feature._
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.functions
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import com.wheels.spark.SQL._
+import org.apache.spark.ml.linalg.DenseVector
+import org.apache.spark.sql.types.DoubleType
 
 
 class Features(ml: ML) {
@@ -138,17 +139,20 @@ class Features(ml: ML) {
     }
 
     private def aftercure(scaled: DataFrame): DataFrame = {
-      var scaled_ = scaled.withColumn(WHEELS_TMP_COL, functions.expr(s"vector2array($WHEELS_OUTPUT_COL)"))
-      var i = 0
-      cols.foreach(c => {
-        val c_ = if (replace) c else c + "_scaled"
-        scaled_ = scaled_.withColumn(c_, functions.expr(s"$WHEELS_TMP_COL[$i]"))
-        i += 1
-      })
-      scaled_ = scaled_.drop(WHEELS_TMP_COL)
-      val r = if (drop) scaled_.drop(WHEELS_INPUT_COL, WHEELS_OUTPUT_COL) else scaled_
-      r.createOrReplaceTempView(if (output_view == null) view else output_view)
-      r
+      var schema = scaled.schema
+      val suffix = "_scaled"
+      cols.foreach(c => schema = schema.add(s"$c$suffix", DoubleType))
+      val scaled_ = spark.createDataFrame(scaled.rdd.map(r =>
+        Row.merge(r, Row.fromSeq(r.getAs[DenseVector](WHEELS_OUTPUT_COL).toArray))
+      ), schema).drop(WHEELS_TMP_COL)
+      val handle_drop = if (drop) scaled_.drop(WHEELS_INPUT_COL, WHEELS_OUTPUT_COL) else scaled_
+      val handle_replace = if (replace) {
+        var tmp = handle_drop.drop(cols: _*)
+        cols.foreach(c => tmp = tmp.withColumnRenamed(s"$c$suffix", c))
+        tmp
+      } else handle_drop
+      handle_replace.createOrReplaceTempView(if (output_view == null) view else output_view)
+      handle_replace
     }
   }
 

@@ -138,6 +138,7 @@ object Core {
 
   private def default_conf(builder: Builder): Unit = {
     builder
+      .config("spark.debug.maxToStringFields", "10086")
       .config("spark.sql.broadcastTimeout", "3000")
       .config("wheel.spark.sql.hive.save.mode", "overwrite")
       .config("wheel.spark.sql.hive.save.format", "parquet")

@@ -282,18 +282,18 @@ class TS {
   }
 
   @Test
-  @DisplayName("测试z_score")
+  @DisplayName("测试max_abs")
   def ts_scaler_max_abs(): Unit = {
 
     val features = ml.features
 
     DBS.movielens_ratings(sql)
     val df = sql ==> ("select concat('u-',user_id) uid,rand() rd," +
-      "user_id f1,item_id f2,rating-2 f3,ts*rand() f4 from movielens_ratings")
+      s"user_id f1,item_id f2,rating-2 f3,ts*rand() f4,${(1 to 50).map("item_id " + "i_" + _).mkString(",")} from movielens_ratings")
     sql register(df.orderBy("rd").limit(10), "ia_tb")
 
     sql show "ia_tb"
-    val scaler = features.scaler("ia_tb", Seq("f1", "f2", "f3"))
+    val scaler = features.scaler("ia_tb", Seq("f1", "f2", "f3") ++ (1 to 50).map("i_" + _))
     scaler.max_abs
     println(s"maxabs=${scaler.maxabs}")
     sql show "ia_tb"
