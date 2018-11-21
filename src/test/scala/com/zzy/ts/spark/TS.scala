@@ -197,7 +197,7 @@ class TS {
 
     sql <== ("emp", "emp_p", p = p3)
 
-    val p4 = partition("country").table_init
+    val p4 = partition("country")
 
     sql <== ("emp", "emp_ap", p = p4)
 

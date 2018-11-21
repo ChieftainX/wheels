@@ -269,6 +269,10 @@ class SQL(spark: SparkSession) extends Core(spark) {
           val pdf = df.select(cols: _*)
           var is_init = p.is_init
           log.info(s"$table is partition table[init:$is_init],will run ${p.values.length} batch")
+          if((!catalog.tableExists(table))&&(!is_init)){
+            log.warn(s"$table not exists, will auto create table")
+            is_init = true
+          }
           p.values.map(v => v.map(s => s"'$s'")).map(v => v.zip(p.col)
             .map(s => s"${s._2}=${s._1}")).foreach(ps => {
             val pdf_ = pdf.where(ps.mkString(" and ")).cache
