@@ -92,6 +92,24 @@ object Core {
         "org" -> Level.WARN
       ))
     }
+    val spark: SparkSession = {
+      val builder = SparkSession.builder()
+      if (hive_support) {
+        builder.enableHiveSupport
+          .config("hive.exec.dynamic.partition", "true")
+          .config("hive.exec.dynamic.partition.mode", "nonstrict")
+          .config("hive.exec.max.dynamic.partitions", "36500")
+          .config("hive.exec.max.dynamic.partitions.pernode", "3650")
+      }
+      this.default_conf(builder)
+      conf.foreach {
+        case (k, v) => builder.config(k, v.toString)
+      }
+      builder.appName(name).getOrCreate()
+    }
+
+    val core = new Core(spark)
+    if (database ne null) spark.sql(s"use $database")
     println(
       """
         |
@@ -116,24 +134,6 @@ object Core {
         |            │ ─┤ ─┤       │ ─┤ ─┤
         |            └──┴──┘       └──┴──┘
       """.stripMargin)
-    val spark: SparkSession = {
-      val builder = SparkSession.builder()
-      if (hive_support) {
-        builder.enableHiveSupport
-          .config("hive.exec.dynamic.partition", "true")
-          .config("hive.exec.dynamic.partition.mode", "nonstrict")
-          .config("hive.exec.max.dynamic.partitions", "36500")
-          .config("hive.exec.max.dynamic.partitions.pernode", "3650")
-      }
-      this.default_conf(builder)
-      conf.foreach {
-        case (k, v) => builder.config(k, v.toString)
-      }
-      builder.appName(name).getOrCreate()
-    }
-
-    val core = new Core(spark)
-    if (database ne null) spark.sql(s"use $database")
     core
   }
 
