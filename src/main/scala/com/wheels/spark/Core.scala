@@ -122,7 +122,8 @@ object Core {
         builder.enableHiveSupport
           .config("hive.exec.dynamic.partition", "true")
           .config("hive.exec.dynamic.partition.mode", "nonstrict")
-          .config("hive.exec.max.dynamic.partitions.pernode", "36500")
+          .config("hive.exec.max.dynamic.partitions", "36500")
+          .config("hive.exec.max.dynamic.partitions.pernode", "3650")
       }
       this.default_conf(builder)
       conf.foreach {

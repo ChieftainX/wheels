@@ -266,7 +266,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
               .map(r => p.col.map(r.getAs[String]))
           }
           val cols = (df.columns.filterNot(p.col.contains) ++ p.col).map(col)
-          val pdf = df.select(cols: _*)
+          val pdf = df.select(cols: _*).cache
           var is_init = p.is_init
           log.info(s"$table is partition table[init:$is_init],will run ${p.values.length} batch")
           p.values.map(v => v.map(s => s"'$s'")).map(v => v.zip(p.col)
@@ -289,6 +289,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
             log.info(s"$table's partition[$ps] is saved,count:$ct_,file number:$coalesce_num")
             pdf_.unpersist
           })
+          pdf.unpersist
         }
     }
     df.unpersist
