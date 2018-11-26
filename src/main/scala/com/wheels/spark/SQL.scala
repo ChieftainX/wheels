@@ -237,29 +237,31 @@ class SQL(spark: SparkSession) extends Core(spark) {
            save_mode: SaveMode = save_mode,
            format_source: String = format_source,
            coalesce_limit: Long = coalesce_limit,
-           refresh_view: Boolean = refresh_view): Long = {
-    catalog.dropTempView(table)
-    log.info(s"$table[save mode:$save_mode,format source:$format_source] will be save")
+           refresh_view: Boolean = refresh_view,
+           db: String = catalog.currentDatabase): Long = {
+    val table_ = if (table.contains(".")) table else s"$db.$table"
+    val is_uncache = df.storageLevel eq StorageLevel.NONE
+    log.info(s"$table_[save mode:$save_mode,format source:$format_source,cache:${!is_uncache}] will be save")
     log.info(s"schema is:${df.schema}")
-    if (df.storageLevel eq StorageLevel.NONE) df.cache
+    if (is_uncache) df.cache
     val ct = df.count
     ct match {
       case 0l =>
-        log.warn(s"$table is empty,skip save")
+        log.warn(s"$table_ is empty,skip save")
       case _ =>
-        log.info(s"$table length is $ct,begin save")
+        log.info(s"$table_ length is $ct,begin save")
         if (p eq null) {
           val coalesce_num = (1 + ct / coalesce_limit).toInt
           val writer = df.coalesce(coalesce_num).write
           save_mode match {
             case SaveMode.Append =>
-              writer.insertInto(table)
+              writer.insertInto(table_)
             case _ =>
               writer
                 .mode(save_mode).format(format_source)
-                .saveAsTable(table)
+                .saveAsTable(table_)
           }
-          log.info(s"$table[$coalesce_num flies] is saved")
+          log.info(s"$table_[$coalesce_num flies] is saved")
         } else {
           if (p.values.isEmpty) {
             p ++ df.select(p.col.map(col): _*).distinct.collect
@@ -268,9 +270,9 @@ class SQL(spark: SparkSession) extends Core(spark) {
           val cols = (df.columns.filterNot(p.col.contains) ++ p.col).map(col)
           val pdf = df.select(cols: _*)
           var is_init = p.is_init
-          log.info(s"$table is partition table[init:$is_init],will run ${p.values.length} batch")
-          if((!catalog.tableExists(table))&&(!is_init)){
-            log.warn(s"$table not exists, will auto create table")
+          log.info(s"$table_ is partition table[init:$is_init],will run ${p.values.length} batch")
+          if ((!catalog.tableExists(table_)) && (!is_init)) {
+            log.warn(s"$table_ not exists, will auto create table")
             is_init = true
           }
           p.values.map(v => v.map(s => s"'$s'")).map(v => v.zip(p.col)
@@ -283,22 +285,22 @@ class SQL(spark: SparkSession) extends Core(spark) {
               writer.mode(save_mode)
                 .format(format_source)
                 .partitionBy(p.col: _*)
-                .saveAsTable(table)
+                .saveAsTable(table_)
               is_init = false
             }
             else {
-              spark.sql(s"alter table $table drop if exists partition (${ps.mkString(",")})")
-              writer.insertInto(table)
+              spark.sql(s"alter table $table_ drop if exists partition (${ps.mkString(",")})")
+              writer.insertInto(table_)
             }
-            log.info(s"$table's partition[$ps] is saved,count:$ct_,file number:$coalesce_num")
+            log.info(s"$table_'s partition[$ps] is saved,count:$ct_,file number:$coalesce_num")
             pdf_.unpersist
           })
           pdf.unpersist
         }
     }
-    df.unpersist
+    if (is_uncache) df.unpersist
     if (refresh_view && ct > 0l) this read table
-    this register(df, table)
+    else this.register(df, table)
     ct
   }
 
@@ -395,14 +397,15 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
   /**
     * super-join 功能（可以自动解决两个数据集left，inner，full的join操作产生的数据倾斜）
-    * @param bigger_view 较大的视图名称
+    *
+    * @param bigger_view  较大的视图名称
     * @param smaller_view 较小的视图名称
-    * @param join_cols join的列
-    * @param join_type join的类型，暂时仅支持left，inner，full。默认为inner
-    * @param output_view 输出视图名称，默认为wheels_super_join_res
-    * @param deal_ct 判定为倾斜的阀值，默认为10000
-    * @param deal_limit 做特殊处理数据量的上限，默认为1000
-    * @param bigger_clv 较大视图的缓存级别，默认为MEMORY_AND_DISK
+    * @param join_cols    join的列
+    * @param join_type    join的类型，暂时仅支持left，inner，full。默认为inner
+    * @param output_view  输出视图名称，默认为wheels_super_join_res
+    * @param deal_ct      判定为倾斜的阀值，默认为10000
+    * @param deal_limit   做特殊处理数据量的上限，默认为1000
+    * @param bigger_clv   较大视图的缓存级别，默认为MEMORY_AND_DISK
     */
   def super_join(bigger_view: String, smaller_view: String, join_cols: Seq[String],
                  join_type: String = "inner",

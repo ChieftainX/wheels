@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions._
 import org.apache.spark.sql.catalog.Catalog
 import org.junit.jupiter.api.TestInstance.Lifecycle
 import com.wheels.spark.SQL._
+import org.apache.spark.storage.StorageLevel
 
 /**
   * Created by zzy on 2018/10/25.
@@ -34,7 +35,6 @@ class TS {
 
     val spark = sql.spark
     catalog = spark.catalog
-    DBS.emp(sql)
     println("current database is " + catalog.currentDatabase)
 
   }
@@ -124,6 +124,7 @@ class TS {
   @Test
   @DisplayName("测试保存到hive的功能")
   def ts_save(): Unit = {
+    DBS.emp(sql)
 
     sql show "emp"
 
@@ -166,6 +167,7 @@ class TS {
   @Test
   @DisplayName("测试保存同一张表到hive的功能")
   def ts_same_table_save(): Unit = {
+    DBS.emp(sql)
     sql <== "emp"
     sql read "emp"
     sql ==> ("select *,1 mk from emp", "emp")
@@ -180,6 +182,7 @@ class TS {
   @Test
   @DisplayName("测试partition功能")
   def ts_partition(): Unit = {
+    DBS.emp(sql)
     import com.wheels.spark.SQL.partition
 
     val p1 = partition("y", "m", "d") + ("2018", "08", "12") + ("2018", "08", "17") + ("2018", "08", "17")
@@ -208,7 +211,7 @@ class TS {
   @Test
   @DisplayName("测试collect_json功能")
   def ts_2json(): Unit = {
-
+    DBS.emp(sql)
     sql ==> ("select *,123 `from` from emp", "emp")
     sql show "emp"
 
@@ -310,6 +313,7 @@ class TS {
   @Test
   @DisplayName("测试clear view功能")
   def ts_clear_view(): Unit = {
+    DBS.emp(sql)
     val df = sql view "emp"
     sql register(df, "emp_0")
     sql register(df, "emp_1")
@@ -333,8 +337,21 @@ class TS {
   }
 
   @Test
+  @DisplayName("测试修复保存后会释放缓存的bug")
+  def ts_save_cache(): Unit = {
+    DBS.emp(sql)
+    sql ==> ("select * from emp", "emp", cache = true)
+    sql <== "emp"
+    val stl = sql.view("emp").storageLevel
+    println(stl)
+    assertEquals(stl, StorageLevel.MEMORY_AND_DISK)
+
+  }
+
+  @Test
   @DisplayName("测试to_vector功能")
   def ts_to_vector(): Unit = {
+    DBS.emp(sql)
     sql ==> (s"select ${to_vector(Seq("height"))} from emp", "emp_v")
     sql show "emp_v"
     sql ==> (s"select *,1.8 nb1,4 nb2,0 nb3 from emp", "emp")
