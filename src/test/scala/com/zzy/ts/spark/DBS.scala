@@ -16,7 +16,7 @@ object DBS {
       ("u-007", 166, "JP", "o-002"),
       ("u-008", 148, "CN", "o-002"),
       ("u-009", 172, "CN", "o-003"),
-      ("u-010", 167, "US", "o-003")
+      ("u-010", 167, "US", null)
     ).toDF("user_id", "height", "country", "org_id")
 
     sql cache emp

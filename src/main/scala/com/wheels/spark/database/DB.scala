@@ -6,15 +6,16 @@ import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, TableName}
-import org.apache.hadoop.hbase.client.{Admin, Connection, ConnectionFactory, Put}
+import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, KeyValue, TableName}
+import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
-import org.apache.hadoop.hbase.mapreduce.TableOutputFormat
+import org.apache.hadoop.hbase.mapreduce.{HFileOutputFormat2, LoadIncrementalHFiles, TableOutputFormat}
 import org.apache.hadoop.hbase.util.Bytes
-import org.apache.hadoop.mapreduce.{MRJobConfig, OutputFormat}
+import org.apache.hadoop.mapreduce.{Job, MRJobConfig, OutputFormat}
 import redis.clients.jedis.{HostAndPort, JedisCluster}
 import java.util.Properties
 
+import org.apache.hadoop.fs.Path
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -95,6 +96,8 @@ class DB(sql: SQL) {
                    split_keys: Seq[String] =
                    Seq("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                      "a", "b", "c", "d", "e", "f"),
+                   ex_save: Boolean = false,
+                   ex_save_dir: String = "wheels-database-hbase-temp",
                    overwrite: Boolean = false) {
 
     private lazy val sks: Array[Array[Byte]] = split_keys.map(Bytes.toBytes).toArray
@@ -102,10 +105,18 @@ class DB(sql: SQL) {
     private lazy val family: Array[Byte] = Bytes.toBytes(family_name)
 
     private def save_job(table: String): Configuration = {
+      val conf = get_conf
       conf.setClass(MRJobConfig.OUTPUT_FORMAT_CLASS_ATTR,
         classOf[TableOutputFormat[_]], classOf[OutputFormat[_, _]])
       conf.set(TableOutputFormat.OUTPUT_TABLE, table)
       conf
+    }
+
+    private def save_job_ex(table: String): Job = {
+      val conf = get_conf
+      conf.set(TableOutputFormat.OUTPUT_TABLE, table)
+      conf.setInt("hbase.mapreduce.bulkload.max.hfiles.perRegion.perFamily", 10010)
+      Job.getInstance(conf)
     }
 
     private def init(table: String): Unit = {
@@ -132,7 +143,7 @@ class DB(sql: SQL) {
       }
     }
 
-    private lazy val conf: Configuration = {
+    private def get_conf: Configuration = {
       val conf = HBaseConfiguration.create()
       conf.set("hbase.zookeeper.property.clientPort", port.toString)
       conf.set("hbase.zookeeper.quorum", hbase_zookeeper_quorum)
@@ -140,11 +151,11 @@ class DB(sql: SQL) {
     }
 
     private def create_conn: Connection =
-      ConnectionFactory.createConnection(conf)
+      ConnectionFactory.createConnection(get_conf)
 
     def <==(view: String, table: String = null): Unit = {
       val tb = if (table ne null) table else view
-      val df = sql view tb
+      val df = sql view view
       dataframe(df, tb)
     }
 
@@ -154,15 +165,29 @@ class DB(sql: SQL) {
       val cols = df.schema.map(_.name)
       if (!cols.contains(rk_col_)) throw IllegalParamException(s"your dataframe has no rk[$rk_col_] column")
       val cols_ = cols.filter(_ ne rk_col_)
-      save(df.where(s"$rk_col_ is not null")
-        , table, (r: Row) => {
-          val put = new Put(Bytes.toBytes(r.get(r.fieldIndex(rk_col_)).toString))
-          cols_.foreach(col => {
+      val input = df.where(s"$rk_col_ is not null")
+      if (ex_save) {
+        save_ex(input.sort(rk_col_), table, (r: Row) => {
+          val rk = Bytes.toBytes(r.get(r.fieldIndex(rk_col_)).toString)
+          cols_.sorted.map(col => {
             val value = r.get(r.fieldIndex(col))
-            if (value != null) put.addColumn(family_, Bytes.toBytes(col), Bytes.toBytes(value.toString))
-          })
-          (new ImmutableBytesWritable(), put)
+            val kv = if (value == null) null else new KeyValue(rk, family_,
+              Bytes.toBytes(col), Bytes.toBytes(value.toString))
+            (new ImmutableBytesWritable(), kv)
+          }).filterNot(_._2 == null)
         })
+      } else {
+        save(input
+          , table, (r: Row) => {
+            val put = new Put(Bytes.toBytes(r.get(r.fieldIndex(rk_col_)).toString))
+            cols_.foreach(col => {
+              val value = r.get(r.fieldIndex(col))
+              if (value != null) put.addColumn(family_, Bytes.toBytes(col), Bytes.toBytes(value.toString))
+            })
+            (new ImmutableBytesWritable(), put)
+          })
+      }
+
     }
 
     private def save(df: DataFrame,
@@ -170,6 +195,29 @@ class DB(sql: SQL) {
                      f: Row => (ImmutableBytesWritable, Put)): Unit = {
       init(table)
       df.rdd.map(f).saveAsNewAPIHadoopDataset(save_job(table))
+    }
+
+    private def save_ex(df: DataFrame,
+                        table: String,
+                        f: Row => Seq[(ImmutableBytesWritable, KeyValue)]): Unit = {
+      init(table)
+      val job = save_job_ex(table)
+      val dir = s"$ex_save_dir/$table"
+      val path = new Path(dir)
+      val fs = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
+      if (fs.exists(path)) fs.delete(path, true)
+      fs.close()
+      job.getConfiguration.set("mapred.output.dir", dir)
+      job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
+      job.setMapOutputValueClass(classOf[KeyValue])
+      val conf = job.getConfiguration
+      val conn = create_conn
+      val htb = conn.getTable(TableName.valueOf(table))
+      HFileOutputFormat2.configureIncrementalLoadMap(job, htb)
+      df.rdd.flatMap(f).saveAsNewAPIHadoopDataset(job.getConfiguration)
+      new LoadIncrementalHFiles(conf).run(Array(dir, table))
+      htb.close()
+      conn.close()
     }
   }
 

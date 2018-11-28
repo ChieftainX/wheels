@@ -28,8 +28,6 @@ class TS {
 
     database = sql.support_database
 
-    DBS.emp(sql)
-
   }
 
   @BeforeEach
@@ -39,7 +37,7 @@ class TS {
   @Test
   @DisplayName("测试写集群模式的redis功能(注意开启redis-server)")
   def ts_redis(): Unit = {
-
+    DBS.emp(sql)
     sql ==> (
       """
         |select
@@ -75,7 +73,7 @@ class TS {
 
   @Test
   @DisplayName("测试dataframe -> hbase")
-  def ts_hbase(): Unit = {
+  def ts_save_hbase(): Unit = {
     DBS.emp(sql)
 
     sql ==> (
@@ -98,6 +96,24 @@ class TS {
     hbase <== "w2hbase"
 
     hbase dataframe(df, "emp")
+  }
+
+  @Test
+  @DisplayName("测试dataframe -ex> hbase")
+  def ts_ex_save_hbase(): Unit = {
+    DBS.emp(sql)
+
+    sql ==> (
+      """
+        |select user_id rk,height,country,org_id
+        |from emp
+      """.stripMargin,
+      "w2hbase_ex", cache = true)
+
+    val hbase = database.hbase("127.0.0.1", ex_save = true)
+
+    hbase <== "w2hbase_ex"
+
   }
 
   @Test

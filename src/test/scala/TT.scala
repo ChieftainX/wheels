@@ -9,7 +9,7 @@ class TT {
   @Test
   def tt(): Unit = {
     println(Seq("abc").mkString(","))
-    println(Seq("def","cc").mkString(","))
+    println(Seq("def","cc").sorted)
 
   }
 
