@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.{Job, MRJobConfig, OutputFormat}
 import redis.clients.jedis.{HostAndPort, JedisCluster}
 import java.util.Properties
 
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -97,6 +97,8 @@ class DB(sql: SQL) {
                    Seq("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                      "a", "b", "c", "d", "e", "f"),
                    ex_save: Boolean = false,
+                   ex_hdfs_site: String = null,
+                   ex_hdfs_uri: String = null,
                    ex_save_dir: String = "wheels-database-hbase-temp",
                    overwrite: Boolean = false) {
 
@@ -116,6 +118,10 @@ class DB(sql: SQL) {
       val conf = get_conf
       conf.set(TableOutputFormat.OUTPUT_TABLE, table)
       conf.setInt("hbase.mapreduce.bulkload.max.hfiles.perRegion.perFamily", 10010)
+      if (ex_hdfs_site ne null) {
+        if (ex_hdfs_uri ne null) conf.set(FileSystem.FS_DEFAULT_NAME_KEY, ex_hdfs_uri)
+        conf.addResource(ex_hdfs_site)
+      }
       Job.getInstance(conf)
     }
 
@@ -206,7 +212,6 @@ class DB(sql: SQL) {
       val path = new Path(dir)
       val fs = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
       if (fs.exists(path)) fs.delete(path, true)
-      fs.close()
       job.getConfiguration.set("mapred.output.dir", dir)
       job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
       job.setMapOutputValueClass(classOf[KeyValue])
