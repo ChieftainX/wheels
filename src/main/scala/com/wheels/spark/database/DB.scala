@@ -208,14 +208,14 @@ class DB(sql: SQL) {
                         f: Row => Seq[(ImmutableBytesWritable, KeyValue)]): Unit = {
       init(table)
       val job = save_job_ex(table)
+      val conf = job.getConfiguration
       val dir = s"$ex_save_dir/$table"
       val path = new Path(dir)
-      val fs = path.getFileSystem(spark.sparkContext.hadoopConfiguration)
+      val fs = path.getFileSystem(conf)
       if (fs.exists(path)) fs.delete(path, true)
       job.getConfiguration.set("mapred.output.dir", dir)
       job.setMapOutputKeyClass(classOf[ImmutableBytesWritable])
       job.setMapOutputValueClass(classOf[KeyValue])
-      val conf = job.getConfiguration
       val conn = create_conn
       val htb = conn.getTable(TableName.valueOf(table))
       HFileOutputFormat2.configureIncrementalLoadMap(job, htb)
