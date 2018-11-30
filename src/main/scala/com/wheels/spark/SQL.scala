@@ -9,8 +9,9 @@ import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.{DenseVector, Vectors}
 import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.{broadcast, col, lit}
+import org.apache.spark.sql.types.{DataType, StructType}
 import org.apache.spark.storage.StorageLevel
 
 import scala.collection.mutable.ListBuffer
@@ -176,6 +177,17 @@ class SQL(spark: SparkSession) extends Core(spark) {
     */
   def desc(view: String): Unit = spark.table(view).printSchema()
 
+  /**
+    * 对视图进行去重
+    *
+    * @param view 视图名称
+    * @return 去重后的dataframe
+    */
+  def distinct(view: String): DataFrame = {
+    val df = (this view view).distinct
+    this register(df, view)
+  }
+
 
   /**
     * 列重命名
@@ -186,20 +198,6 @@ class SQL(spark: SparkSession) extends Core(spark) {
     */
   def col_rename(view: String, o: String, n: String): Unit =
     spark.table(view).withColumnRenamed(o, n).createOrReplaceTempView(view)
-
-  /**
-    * 列重命名（批量）
-    *
-    * @param view 视图名称
-    * @param onm  新老列名映射关系
-    */
-  def col_rename(view: String, onm: Map[String, String]): Unit = {
-    var df = spark.table(view)
-    onm.foreach(m => {
-      df = df.withColumnRenamed(m._1, m._2)
-    })
-    df.createOrReplaceTempView(view)
-  }
 
   /**
     * 删除列
@@ -219,6 +217,62 @@ class SQL(spark: SparkSession) extends Core(spark) {
   def col_select(view: String, cols: String*): Unit =
     spark.table(view).selectExpr(cols: _*).createOrReplaceTempView(view)
 
+  /**
+    * 列重命名（批量）
+    *
+    * @param view 视图名称
+    * @param onm  (老列名，新列名)
+    * @return 命名后的dataframe
+    */
+  def col_rename(view: String, onm: Map[String, String]): DataFrame = {
+    val df = col_rename4df(this view view, onm)
+    this register(df, view)
+    df
+  }
+
+  /**
+    * 列重命名（批量）
+    *
+    * @param df  待命名的dataframe
+    * @param onm (老列名，新列名)
+    * @return 命名后的dataframe
+    */
+  def col_rename4df(df: DataFrame, onm: Map[String, String]): DataFrame = {
+    val exprs = df.columns.map(c => s"$c ${onm.getOrElse(c, "")}").map(_.trim)
+    df.selectExpr(exprs: _*)
+  }
+
+  /**
+    * 自定义列转换，生成新列
+    *
+    * @param view        视图名称
+    * @param output_cols 输出的（列，类型）
+    * @param f           自定义转换函数
+    * @return 转换后的dataframe
+    */
+  def with_col(view: String, output_cols: Seq[(String, DataType)], f: Row => Row): DataFrame = {
+    val df = with_col4df(this view view, output_cols, f)
+    this register(df, view)
+    df
+  }
+
+  /**
+    * 自定义列转换，生成新列··
+    *
+    * @param df          待转换的dataframe
+    * @param output_cols 输出的（列，类型）
+    * @param f           自定义转换函数
+    * @return 转换后的dataframe
+    */
+  def with_col4df(df: DataFrame, output_cols: Seq[(String, DataType)], f: Row => Row): DataFrame = {
+    var st = new StructType
+    val cs = output_cols.map(_._1)
+    df.schema.filterNot(s => cs.contains(s.name)).foreach(c => st = st.add(c))
+    val other_cols = st.fieldNames
+    output_cols.foreach(ocs => st = st.add(ocs._1, ocs._2))
+    spark.createDataFrame(df.rdd.map(r => Row.merge(Row.fromSeq(other_cols.map(c => r.get(r.fieldIndex(c)))), f(r))),
+      st)
+  }
 
   /**
     * 将视图写入hive
@@ -513,6 +567,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
 
   }
 
+  // 自定义函数
   val udf: functions = functions(spark)
 
 }

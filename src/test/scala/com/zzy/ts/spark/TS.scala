@@ -4,11 +4,12 @@ import com.wheels.common.Time
 import com.wheels.spark.{Core, SQL}
 import com.wheels.exception.RealityTableNotFoundException
 import org.junit.jupiter.api._
-import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.{Row, SaveMode}
 import org.junit.jupiter.api.Assertions._
 import org.apache.spark.sql.catalog.Catalog
 import org.junit.jupiter.api.TestInstance.Lifecycle
 import com.wheels.spark.SQL._
+import org.apache.spark.sql.types.DataTypes
 import org.apache.spark.storage.StorageLevel
 
 /**
@@ -358,6 +359,28 @@ class TS {
     sql show "emp"
     sql ==> (s"select *,${to_vector(Seq("nb1", "nb2", "nb3", "height", "user_id"), "vectors")} from emp", "emp_vs")
     sql show "emp_vs"
+  }
+
+  @Test
+  @DisplayName("测试with_col功能")
+  def ts_with_col(): Unit = {
+    DBS.emp(sql)
+    sql show "emp"
+    sql with_col("emp",
+      Seq(
+        ("org_id", DataTypes.StringType),
+        ("age", DataTypes.IntegerType)
+      ), r => {
+      val c = r.getAs[String]("country")
+      val o = r.getAs[String]("org_id")
+      val h = r.getAs[Int]("height")
+      Row(s"[$c]~[$o]~[", h / 10)
+    })
+    sql col_rename("emp", Map("user_id" -> "uid", "height" -> "h"))
+    sql show "emp"
+    sql col_select("emp", "country")
+    sql distinct "emp"
+    sql show "emp"
   }
 
   @Test
