@@ -22,8 +22,9 @@
   - [super-join](#sql-ex-super-join)  
 - ***[Database 模块](#db-model)***
   - [开启方式](#db-model-open)
-  - [hbase](#hbase)
-  - [redis](#redis)
+  - [hbase](#db-model-hbase)
+  - [redis](#db-model-redis)
+  - [kafka](#db-model-kafka)
 - ***[ML 模块](#ml-model)***
   - [开启方式](#ml-model-open)
   - [特征处理](#ml-model-f)
@@ -504,7 +505,7 @@ sql super_join("my_table_1", "my_table_2", Seq("join_key_1","join_key_2"),
 val database: DB = sql.support_database
 ```
 
-### <a name='hbase'>hbase</a>
+### <a name='db-model-hbase'>hbase</a>
 
 在默认情况下，会将视图中的数据写入所指定的hbase表中。<br>
 其中会把视图中名为“rk”的列作为row key，列族为cf。同时支持row key与视图列的对应关系、列族名称、预分区设置。
@@ -597,7 +598,7 @@ ROW                   COLUMN+CELL
 |split_keys | 预分区字母，默认为0～9，a～f|
 |overwrite | 是否采用完全覆盖写入方式（每次写入前重建表），默认为false|
 
-### <a name='redis'>redis</a>
+### <a name='db-model-redis'>redis</a>
 
 该功能只支持redis集群数据写入，默认情况下会把带有k，v两列的视图永久写入redis集群。k，v与视图类的对应关系及数据的存留时间可配置。
 
@@ -636,6 +637,7 @@ val redis = database.redis(
 redis <== "w2redis"
 ```
 
+
 更多配置项
 
 |配置参数|说明|
@@ -648,6 +650,24 @@ redis <== "w2redis"
 |max_attempts | 最大重试次数|
 |pwd redis | 秘钥|
 |batch | 写入数据批次，默认20|
+
+
+### <a name='db-model-kafka'>kafka</a>
+使用方式：
+
++ 版本0.10+
+
+```
+val kafka = database.kafka(servers = "yourhost0:port0,yourhost1:port1,yourhost2:port2", "your-topic")
+kafka <== "your_view"
+```
+
++ 版本低于 0.10
+
+```
+val kafka = database.kafka_low(servers = "yourhost0:port0,yourhost1:port1,yourhost2:port2", "your-topic")
+kafka <== "your_view"
+```
 
 ## <a name='ml-model'>ML 模块</a>
 

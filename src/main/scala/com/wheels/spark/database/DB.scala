@@ -253,6 +253,7 @@ class DB(sql: SQL) {
     *
     * @param servers broker地址，多个用逗号分隔
     * @param topic   topic名称
+    * @param batch   批次
     */
   case class kafka_low(servers: String, topic: String, batch: Int = 10) {
 
