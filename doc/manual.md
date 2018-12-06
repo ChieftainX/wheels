@@ -303,7 +303,7 @@ sql <== ("emp_res",//视图名称
 import com.wheels.spark.SQL.partition
 
 // 设置分区字段为y,m,d
-val p = partition("y", "m", "d")
+val pt = partition("y", "m", "d")
 
 // 在hive中写入名为tb_login_log，以y,m,d字段作为分区的表
 sql <== ("tb_login_log", p = pt)
@@ -318,7 +318,7 @@ sql <== ("tb_login_log", p = pt)
 import com.wheels.spark.SQL.partition
 
 // 设置分区字段为y,m,d
-val p = partition("y", "m", "d") + ("2018", "11", "11")
+val pt = partition("y", "m", "d") + ("2018", "11", "11")
 
 // 在hive中写入名为tb_login_log，以y,m,d字段作为分区的表
 sql <== ("tb_login_log", p = pt)
@@ -334,7 +334,7 @@ import com.wheels.spark.SQL.partition
 val days = ++ Seq(Seq("2018", "11", "02"),
                   Seq("2018", "11", "15"),
                   Seq("2018", "11", "30"))
-val p = partition("y", "m", "d") ++ days
+val pt = partition("y", "m", "d") ++ days
 
 // 在hive中写入名为tb_login_log，以y,m,d字段作为分区的表
 sql <== ("tb_login_log", p = pt)
@@ -344,7 +344,7 @@ sql <== ("tb_login_log", p = pt)
 默认状态下，程序会认为待写入的分区表是存在的，若需要建表或者刷新表，可以设置如下参数即可：
 
 ```
-val p = partition("y", "m", "d").table_init
+val pt = partition("y", "m", "d").table_init
 ```
 
 ## <a name='sql-ex'>SQL增强</a>
