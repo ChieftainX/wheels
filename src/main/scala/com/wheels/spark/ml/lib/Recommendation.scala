@@ -11,7 +11,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 /** *
   * 用于推荐算法实现
   */
-class Recommendation(ml: ML) {
+class Recommendation(ml: ML) extends Serializable {
 
   import Recommendation._
 

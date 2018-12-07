@@ -6,9 +6,9 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
 
-class ML(sql: SQL) {
+class ML(sql: SQL) extends Serializable {
 
-  def spark: SparkSession = sql.spark
+  val spark: SparkSession = sql.spark
 
   def recommendation: Recommendation = new Recommendation(this)
 

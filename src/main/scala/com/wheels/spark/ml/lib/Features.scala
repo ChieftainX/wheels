@@ -8,7 +8,7 @@ import org.apache.spark.ml.linalg.DenseVector
 import org.apache.spark.sql.types.DoubleType
 
 
-class Features(ml: ML) {
+class Features(ml: ML) extends Serializable {
 
   val spark: SparkSession = ml.spark
 

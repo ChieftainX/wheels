@@ -20,9 +20,9 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, Produce
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
-class DB(sql: SQL) {
+class DB(sql: SQL) extends Serializable {
 
-  def spark: SparkSession = sql.spark
+  val spark: SparkSession = sql.spark
 
   /**
     * redis 配置项

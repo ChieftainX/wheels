@@ -576,6 +576,7 @@ object SQL {
 
   def apply(spark: SparkSession): SQL = new SQL(spark)
 
+  @transient
   lazy val log: Logger = Log.get("wheel>spark>sql")
 
   /**

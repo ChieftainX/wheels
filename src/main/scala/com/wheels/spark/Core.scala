@@ -10,7 +10,7 @@ import org.apache.spark.sql.catalog.Catalog
 /**
   * Created by zzy on 2018/10/25.
   */
-class Core(val spark: SparkSession) {
+class Core(@transient val spark: SparkSession) extends Serializable {
 
   import Core.log
 
@@ -68,6 +68,7 @@ class Core(val spark: SparkSession) {
 
 object Core {
 
+  @transient
   lazy val log: Logger = Log.get("wheel>spark>core")
 
   /**
