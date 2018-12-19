@@ -45,23 +45,15 @@ sql <== "emp_res" //保存结果数据到默认存储
 + [API](doc/api.zip)
 + [配置](doc/conf.md)
 
-## 版本历史及后续计划
-- [X] v0.1
-  - [X] spark-core 集成
-  - [X] spark-sql 集成
-  - [X] 实现自动处理小文件的spark dataframe -> hive table存储
-- [ ] v0.1->v0.2
-  - [X] 加权排序
-  - [X] dataframe/view -> redis
-  - [X] dataframe/view -> hbase
-  - [X] lfm推荐算法集成
-  - [ ] dataframe/view -> kafka
-- [ ] v0.2->v0.3
-  - [ ] dataframe/view -> es
-  - [ ] 相似度计算 
-  - [ ] super join实现（自动发现并解决含有数据倾斜的join操作）
-  - [ ] dataframe <-> jdbc
-- [ ] v0.3->future
-  - [ ] 常用特征工程工具实现
-  - [ ] 分词（分布式）  
-  - [ ] ai.h2o 集成
+## Todo List
+- [X] spark-core 集成
+- [X] spark-sql 集成
+- [X] 实现自动处理小文件的spark dataframe -> hive table存储
+- [X] dataframe/view -> redis
+- [X] dataframe/view -> hbase
+- [X] dataframe/view -> kafka
+- [X] super join实现（自动发现并解决含有数据倾斜的join操作）
+- [ ] dataframe/view -> es
+- [ ] dataframe <-> jdbc
+- [ ] 常用特征工程工具实现 
+- [ ] ai.h2o 集成
