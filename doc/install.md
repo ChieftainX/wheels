@@ -41,6 +41,6 @@ libraryDependencies ++= Seq(
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 ```
 ## 步骤
-1. 将项目使用sbt package打包
+1. 将项目使用sbt package打包或[下载最新版本](https://github.com/ChieftainX/wheels/releases/download/v0.1/wheels_2.11-0.1.jar)
 2. 在自己项目根目录创建lib文件夹
 3. 把打好的包放的lib文件夹并且使用开发工具将此包添加至工程class path
