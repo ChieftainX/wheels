@@ -1,6 +1,46 @@
 name := "wheels"
 
-version := "0.2.0"
+isSnapshot := true
+
+version := "0.2.0" + {
+  if (isSnapshot.value) "-SNAPSHOT"
+  else ""
+}
+
+organization := "com.kjzero"
+
+useGpg := true
+
+crossPaths := false
+
+pomIncludeRepository := { _ => false }
+
+homepage := Some(url("https://github.com/ChieftainX/wheels"))
+
+developers := List(
+  Developer(
+    id = "com.kjzero",
+    name = "ChieftainX",
+    email = "chieftains@yeah.net",
+    url = url("https://github.com/ChieftainX")
+  )
+)
+
+publishMavenStyle := true
+
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishArtifact in Test := false
+publishArtifact in Provided := false
+
+publishConfiguration := publishConfiguration.value.withOverwrite(true)
+publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 
 scalaVersion := "2.11.8"
 
@@ -31,7 +71,6 @@ libraryDependencies ++= Seq(
   "org.apache.hbase" % "hbase-hadoop-compat" % hbase_version % Provided
 )
 
-
 libraryDependencies ++= Seq(
   "org.junit.platform" % "junit-platform-launcher" % "1.3.1" % Test,
   "org.junit.jupiter" % "junit-jupiter-engine" % "5.3.1" % Test,
@@ -40,6 +79,7 @@ libraryDependencies ++= Seq(
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
+//解决spark-sql-kafka冲突
 assemblyMergeStrategy in assembly := {
   case PathList(ps@_*) if ps.last endsWith "UnusedStubClass.class" => MergeStrategy.first
   case x =>
