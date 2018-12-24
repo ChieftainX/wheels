@@ -1,6 +1,6 @@
 name := "wheels"
 
-isSnapshot := true
+isSnapshot := false
 
 version := "0.2.0" + {
   if (isSnapshot.value) "-SNAPSHOT"
@@ -11,11 +11,20 @@ organization := "com.kjzero"
 
 useGpg := true
 
-crossPaths := false
+crossPaths := true
 
 pomIncludeRepository := { _ => false }
 
+licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
+
 homepage := Some(url("https://github.com/ChieftainX/wheels"))
+
+scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/ChieftainX/wheels"),
+    "scm:git@github.com:ChieftainX/wheels.git"
+  )
+)
 
 developers := List(
   Developer(
