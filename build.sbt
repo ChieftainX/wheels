@@ -8,24 +8,14 @@ version := "0.2.0" + {
 }
 
 organization := "com.kjzero"
-
-useGpg := true
-
-crossPaths := true
-
-pomIncludeRepository := { _ => false }
-
-licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
-
-homepage := Some(url("https://github.com/ChieftainX/wheels"))
-
+organizationName := "kjzero"
+organizationHomepage := Some(url("https://github.com/ChieftainX/wheels"))
 scmInfo := Some(
   ScmInfo(
     url("https://github.com/ChieftainX/wheels"),
     "scm:git@github.com:ChieftainX/wheels.git"
   )
 )
-
 developers := List(
   Developer(
     id = "com.kjzero",
@@ -34,22 +24,26 @@ developers := List(
     url = url("https://github.com/ChieftainX")
   )
 )
-
-publishMavenStyle := true
-
+licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
+homepage := Some(url("https://github.com/ChieftainX/wheels"))
+pomIncludeRepository := { _ => false }
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
-
+publishMavenStyle := true
 publishArtifact in Test := false
 publishArtifact in Provided := false
 
-publishConfiguration := publishConfiguration.value.withOverwrite(true)
-publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
+useGpg := true
+
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
+
+crossPaths := false
+
+//publishConfiguration := publishConfiguration.value.withOverwrite(true)
+//publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
 
 scalaVersion := "2.11.8"
 
@@ -95,3 +89,10 @@ assemblyMergeStrategy in assembly := {
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
 }
+
+//publishSigned
+//hkp://keyserver.ubuntu.com
+// Mac necessary
+//brew install pinentry-mac
+//echo "pinentry-program /usr/local/bin/pinentry-mac" >> ~/.gnupg/gpg-agent.conf
+//killall gpg-agent
