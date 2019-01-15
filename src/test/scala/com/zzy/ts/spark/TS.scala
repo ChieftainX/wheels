@@ -392,6 +392,27 @@ class TS {
     sql show "ht"
   }
 
+  @Test
+  @DisplayName("测试batch功能")
+  def ts_batch(): Unit = {
+    DBS.movielens_ratings(sql)
+
+    val total_count = sql count "movielens_ratings"
+
+    var total_count_ = 0l
+
+    (sql batch "movielens_ratings").foreach(d => {
+      val dt = d.cache.count
+      d.show
+      d.unpersist
+      total_count_ += dt
+      println(dt)
+    })
+    assertEquals(total_count, total_count_)
+
+    println(total_count)
+  }
+
   @AfterEach
   def after(): Unit = {
     println("after exe:" + catalog.listTables.collect.toSeq)

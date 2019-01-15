@@ -555,6 +555,32 @@ class SQL(spark: SparkSession) extends Core(spark) {
     this view output_view
   }
 
+  /**
+    * 将视图随机分散
+    *
+    * @param view 视图名称
+    * @param num  分散个数（限制2～100）
+    */
+  def batch(view: String, num: Int = 10): Seq[DataFrame] = batch4df(this view view, num)
+
+  /**
+    * 将dataframe随机分散
+    *
+    * @param df  dataframe对象
+    * @param num 分散个数（限制2～100）
+    */
+  def batch4df(df: DataFrame, num: Int = 10): Seq[DataFrame] = {
+    try assert(num >= 2 && num <= 100)
+    catch {
+      case _: java.lang.AssertionError =>
+        throw IllegalParamException("batch save function batch num must 2~100")
+    }
+    val batch_col = "wheels_batch_col"
+    import org.apache.spark.sql.functions.rand
+    val bdf = df.withColumn(batch_col, (rand * num).cast("int"))
+    (0 to num).map(b => bdf.where(s"$batch_col = $b").drop(batch_col))
+  }
+
   case class functions(spark: SparkSession) {
     val to_vector: UserDefinedFunction =
       spark.udf.register("to_vector", (cols: Seq[Double]) => Vectors.dense(cols.toArray))
