@@ -4,25 +4,29 @@ import java.util
 
 import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, KeyValue, TableName}
-import org.apache.hadoop.hbase.client._
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable
-import org.apache.hadoop.hbase.mapreduce.{HFileOutputFormat2, LoadIncrementalHFiles, TableOutputFormat}
-import org.apache.hadoop.hbase.util.Bytes
-import org.apache.hadoop.mapreduce.{Job, MRJobConfig, OutputFormat}
-import redis.clients.jedis.{HostAndPort, JedisCluster}
 import java.util.Properties
-
-import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class DB(sql: SQL) extends Serializable {
 
   val spark: SparkSession = sql.spark
+
+  case class jdbc(driver: String, url: String, user: String = "root", pwd: String = null) {
+
+    case class admin() {
+
+      Class.forName(driver)
+
+      def exe(sql_str: String): Unit = {
+
+      }
+
+      def close(): Unit = {
+
+      }
+    }
+
+  }
 
   /**
     * redis 配置项
@@ -36,16 +40,19 @@ class DB(sql: SQL) extends Serializable {
     * @param pwd          redis 秘钥
     * @param batch        写入数据批次，默认20
     */
-  case class redis(
-                    nodes: Seq[(String, Int)],
-                    key_col: String = "k",
-                    value_col: String = "v",
-                    life_seconds: Int = -1,
-                    timeout: Int = 10000,
-                    max_attempts: Int = 3,
-                    pwd: String = null,
-                    batch: Int = 20
-                  ) {
+  case class redis_cluster(
+                     nodes: Seq[(String, Int)],
+                     key_col: String = "k",
+                     value_col: String = "v",
+                     life_seconds: Int = -1,
+                     timeout: Int = 10000,
+                     max_attempts: Int = 3,
+                     pwd: String = null,
+                     batch: Int = 20
+                   ) {
+
+    import redis.clients.jedis.{HostAndPort, JedisCluster}
+    import org.apache.commons.pool2.impl.GenericObjectPoolConfig
 
     def <==(input: String): Unit = dataframe(sql view input)
 
@@ -101,6 +108,15 @@ class DB(sql: SQL) extends Serializable {
                    ex_hdfs_uri: String = null,
                    ex_save_dir: String = "wheels-database-hbase-temp",
                    overwrite: Boolean = false) {
+
+    import org.apache.hadoop.conf.Configuration
+    import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, KeyValue, TableName}
+    import org.apache.hadoop.hbase.client.{Connection, Admin, ConnectionFactory, Put}
+    import org.apache.hadoop.hbase.io.ImmutableBytesWritable
+    import org.apache.hadoop.hbase.mapreduce.{HFileOutputFormat2, LoadIncrementalHFiles, TableOutputFormat}
+    import org.apache.hadoop.hbase.util.Bytes
+    import org.apache.hadoop.mapreduce.{Job, MRJobConfig, OutputFormat}
+    import org.apache.hadoop.fs.{FileSystem, Path}
 
     private lazy val sks: Array[Array[Byte]] = split_keys.map(Bytes.toBytes).toArray
 
@@ -256,6 +272,9 @@ class DB(sql: SQL) extends Serializable {
     * @param batch   批次
     */
   case class kafka_low(servers: String, topic: String, batch: Int = 10) {
+
+    import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+    import org.apache.kafka.common.serialization.StringSerializer
 
     def <==(view: String): Unit = {
       val df = spark.table(view)

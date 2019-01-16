@@ -47,7 +47,7 @@ class TS {
 
     sql show "w2redis"
 
-    val redis = database.redis(
+    val redis = database.redis_cluster(
       Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381), ("127.0.0.1", 6382)),
       life_seconds = 100 * 60
     )
@@ -62,7 +62,7 @@ class TS {
         |from emp
       """.stripMargin
 
-    database.redis(
+    database.redis_cluster(
       Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381)),
       life_seconds = 10
     ) dataframe df

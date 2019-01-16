@@ -628,7 +628,7 @@ ROW                   COLUMN+CELL
 数据写入：
 
 ```
-val redis = database.redis(
+val redis = database.redis_cluster(
      Seq(("127.0.0.1", 6379), ("127.0.0.1", 6381), ("127.0.0.1", 6382)),//redis集群地址及端口
      life_seconds = 100 * 60//写入的数据保留100分钟
    )
