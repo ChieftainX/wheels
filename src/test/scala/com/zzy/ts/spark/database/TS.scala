@@ -138,6 +138,25 @@ class TS {
 
   }
 
+  @Test
+  @DisplayName("测试jdbc admin")
+  def ts_jdbc_admin(): Unit = {
+    val jdbc = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root")
+    val admin = jdbc.admin()
+    admin.conn.setAutoCommit(false)
+    admin.exe("DROP TABLE IF EXISTS `ts_tb`")
+    admin.exe(
+      """
+        |CREATE TABLE `ts_tb` (
+        |  `ID` varchar(32) NOT NULL,
+        |  `MSG` text,
+        |  PRIMARY KEY (`ID`)
+        |) ENGINE=InnoDB DEFAULT CHARSET=utf8
+      """.stripMargin)
+    admin.close()
+
+  }
+
   @AfterEach
   def after(): Unit = {}
 

@@ -1,29 +1,40 @@
 package com.wheels.spark.database
 
-import java.util
-
 import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
-import java.util.Properties
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 
 class DB(sql: SQL) extends Serializable {
 
   val spark: SparkSession = sql.spark
 
-  case class jdbc(driver: String, url: String, user: String = "root", pwd: String = null) {
+  case class jdbc(driver: String, url: String, user: String = null, pwd: String = null) {
+
+    import java.sql.{Connection, DriverManager, Statement}
 
     case class admin() {
 
       Class.forName(driver)
 
+      val conn: Connection = DriverManager.getConnection(url, user, pwd)
+
       def exe(sql_str: String): Unit = {
 
+        var st: Statement = null
+        try {
+          st = conn.createStatement()
+          st.execute(sql_str)
+          if (!conn.getAutoCommit) conn.commit()
+        }
+        catch {
+          case e: Exception =>
+            throw e
+        } finally {
+          if (st ne null) st.close()
+        }
       }
 
-      def close(): Unit = {
-
-      }
+      def close(): Unit = conn.close()
     }
 
   }
@@ -41,15 +52,15 @@ class DB(sql: SQL) extends Serializable {
     * @param batch        写入数据批次，默认20
     */
   case class redis_cluster(
-                     nodes: Seq[(String, Int)],
-                     key_col: String = "k",
-                     value_col: String = "v",
-                     life_seconds: Int = -1,
-                     timeout: Int = 10000,
-                     max_attempts: Int = 3,
-                     pwd: String = null,
-                     batch: Int = 20
-                   ) {
+                            nodes: Seq[(String, Int)],
+                            key_col: String = "k",
+                            value_col: String = "v",
+                            life_seconds: Int = -1,
+                            timeout: Int = 10000,
+                            max_attempts: Int = 3,
+                            pwd: String = null,
+                            batch: Int = 20
+                          ) {
 
     import redis.clients.jedis.{HostAndPort, JedisCluster}
     import org.apache.commons.pool2.impl.GenericObjectPoolConfig
@@ -57,7 +68,7 @@ class DB(sql: SQL) extends Serializable {
     def <==(input: String): Unit = dataframe(sql view input)
 
     def dataframe(df: DataFrame): Unit = {
-      val nodes_ = new util.HashSet[HostAndPort]()
+      val nodes_ = new java.util.HashSet[HostAndPort]()
       val timeout_ = timeout
       val max_attempts_ = max_attempts
       val pwd_ = pwd
@@ -287,7 +298,7 @@ class DB(sql: SQL) extends Serializable {
       val topic_ = topic
       output.count
       output.coalesce(batch).foreachPartition(values => {
-        val props = new Properties()
+        val props = new java.util.Properties()
         props.put("metadata.broker.list", servers_)
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers_)
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer].getName)

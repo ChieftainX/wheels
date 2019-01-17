@@ -67,6 +67,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= Seq(
   "redis.clients" % "jedis" % jedis_version % Provided,
+  "mysql" % "mysql-connector-java" % "8.0.13" % Provided,
   //调试低版本kafka兼容会用到
   //"org.apache.kafka" % "kafka-clients" % "0.8.2.0" % Provided,
   "org.apache.hbase" % "hbase-server" % hbase_version % Provided,
