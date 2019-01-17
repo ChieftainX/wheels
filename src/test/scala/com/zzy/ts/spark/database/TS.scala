@@ -3,6 +3,7 @@ package com.zzy.ts.spark.database
 import com.wheels.spark.database.DB
 import com.wheels.spark.{Core, SQL}
 import com.zzy.ts.spark.DBS
+import org.apache.spark.sql.SaveMode
 import org.junit.jupiter.api._
 import org.junit.jupiter.api.TestInstance.Lifecycle
 
@@ -154,7 +155,15 @@ class TS {
         |) ENGINE=InnoDB DEFAULT CHARSET=utf8
       """.stripMargin)
     admin.close()
+  }
 
+
+  @Test
+  @DisplayName("测试jdbc save")
+  def ts_jdbc_save(): Unit = {
+    DBS.emp(sql)
+
+    database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root") <== "emp"
   }
 
   @AfterEach

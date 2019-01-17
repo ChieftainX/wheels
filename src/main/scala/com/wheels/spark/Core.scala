@@ -1,7 +1,10 @@
 package com.wheels.spark
 
+import java.util.Locale
+
 import com.wheels.common.{Log, Time}
-import org.apache.spark.sql.SparkSession
+import com.wheels.exception.IllegalConfException
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession.Builder
 import org.apache.spark.sql.catalog.Catalog
@@ -63,6 +66,26 @@ class Core(@transient val spark: SparkSession) extends Serializable {
         |            └──┴──┘       └──┴──┘
       """.stripMargin)
   }
+
+  lazy val DOP: Int = {
+    val cf = spark.sparkContext.getConf
+    val cores_num: Int = cf.get("spark.executor.cores", "2").toInt
+    val instances_num: Int = cf.get("spark.executor.instances", "5").toInt
+    cores_num * instances_num
+  }
+
+  def get_save_mode(key: String): SaveMode = {
+    val mode = spark.conf.get(key)
+    mode.toLowerCase(Locale.ROOT) match {
+      case "overwrite" => SaveMode.Overwrite
+      case "append" => SaveMode.Append
+      case "ignore" => SaveMode.Ignore
+      case "error" | "default" => SaveMode.ErrorIfExists
+      case _ => throw IllegalConfException(s"unknown save mode: $mode." +
+        s"accepted save modes are 'overwrite', 'append', 'ignore', 'error'.")
+    }
+  }
+
 
 }
 
@@ -139,13 +162,15 @@ object Core {
   }
 
   private def default_conf(builder: Builder): Unit = {
+    import com.wheels.common.Conf._
     builder
       .config("spark.debug.maxToStringFields", "10086")
       .config("spark.sql.broadcastTimeout", "3000")
-      .config("wheel.spark.sql.hive.save.mode", "overwrite")
-      .config("wheel.spark.sql.hive.save.format", "parquet")
-      .config("wheel.spark.sql.hive.save.file.lines.limit", "1000000")
-      .config("wheel.spark.sql.hive.save.refresh.view", "false")
+      .config(WHEEL_SPARK_SQL_HIVE_SAVE_MODE, "overwrite")
+      .config(WHEEL_SPARK_SQL_JDBC_SAVE_MODE, "error")
+      .config(WHEEL_SPARK_SQL_HIVE_SAVE_FORMAT, "parquet")
+      .config(WHEEL_SPARK_SQL_HIVE_SAVE_FILE_LINES_LIMIT, "1000000")
+      .config(WHEEL_SPARK_SQL_HIVE_SAVE_REFRESH_VIEW, "false")
   }
 
 }

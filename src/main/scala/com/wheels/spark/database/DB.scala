@@ -2,7 +2,9 @@ package com.wheels.spark.database
 
 import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.functions.rand
+import org.apache.spark.storage.StorageLevel
 
 class DB(sql: SQL) extends Serializable {
 
@@ -11,6 +13,35 @@ class DB(sql: SQL) extends Serializable {
   case class jdbc(driver: String, url: String, user: String = null, pwd: String = null) {
 
     import java.sql.{Connection, DriverManager, Statement}
+    import com.wheels.common.Conf.WHEEL_SPARK_SQL_JDBC_SAVE_MODE
+
+    def <==(view: String, partition_num: Int = -1, table: String = null,
+            save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE)): Long = {
+      val tbn = if (table ne null) table else view
+      dataframe(sql view view, tbn, partition_num, save_mode)
+    }
+
+    def dataframe(df: DataFrame, table: String, partition_num: Int = -1,
+                  save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE)): Long = {
+      val is_uncache = df.storageLevel eq StorageLevel.NONE
+      if (is_uncache) df.cache
+      val ct = df.count
+      df.repartition(if (partition_num > 0) partition_num else sql.DOP, rand())
+        .write
+        .format("jdbc")
+        .options(
+          Map(
+            "url" -> url,
+            "dbtable" -> table,
+            "user" -> user,
+            "password" -> pwd
+          ).filter(_._2 ne null)
+        )
+        .mode(save_mode)
+        .save()
+      if (is_uncache) df.unpersist
+      ct
+    }
 
     case class admin() {
 
@@ -18,12 +49,12 @@ class DB(sql: SQL) extends Serializable {
 
       val conn: Connection = DriverManager.getConnection(url, user, pwd)
 
-      def exe(sql_str: String): Unit = {
-
+      def exe(sql_str: String): Boolean = {
+        var r = false
         var st: Statement = null
         try {
           st = conn.createStatement()
-          st.execute(sql_str)
+          r = st.execute(sql_str)
           if (!conn.getAutoCommit) conn.commit()
         }
         catch {
@@ -32,6 +63,7 @@ class DB(sql: SQL) extends Serializable {
         } finally {
           if (st ne null) st.close()
         }
+        r
       }
 
       def close(): Unit = conn.close()

@@ -3,7 +3,7 @@ package com.wheels.spark
 import java.util.Locale
 
 import com.wheels.common.Log
-import com.wheels.exception.{IllegalConfException, IllegalParamException, RealityTableNotFoundException}
+import com.wheels.exception.{IllegalParamException, RealityTableNotFoundException}
 import com.wheels.spark.database.DB
 import com.wheels.spark.ml.ML
 import org.apache.log4j.Logger
@@ -22,22 +22,11 @@ import scala.collection.mutable.ListBuffer
 class SQL(spark: SparkSession) extends Core(spark) {
 
   import SQL._
+  import com.wheels.common.Conf._
 
   def support_ml: ML = new ML(this)
 
   def support_database: DB = new DB(this)
-
-  private def save_mode: SaveMode = {
-    val mode = spark.conf.get("wheel.spark.sql.hive.save.mode")
-    mode.toLowerCase(Locale.ROOT) match {
-      case "overwrite" => SaveMode.Overwrite
-      case "append" => SaveMode.Append
-      case "ignore" => SaveMode.Ignore
-      case "error" | "default" => SaveMode.ErrorIfExists
-      case _ => throw IllegalConfException(s"unknown save mode: $mode." +
-        s"accepted save modes are 'overwrite', 'append', 'ignore', 'error'.")
-    }
-  }
 
   /**
     * 使用sql进行数据处理
@@ -60,11 +49,11 @@ class SQL(spark: SparkSession) extends Core(spark) {
     df
   }
 
-  private def format_source: String = spark.conf.get("wheel.spark.sql.hive.save.format")
+  private def format_source: String = spark.conf.get(WHEEL_SPARK_SQL_HIVE_SAVE_FORMAT)
 
-  private def coalesce_limit: Long = spark.conf.get("wheel.spark.sql.hive.save.file.lines.limit").toLong
+  private def coalesce_limit: Long = spark.conf.get(WHEEL_SPARK_SQL_HIVE_SAVE_FILE_LINES_LIMIT).toLong
 
-  private def refresh_view: Boolean = spark.conf.get("wheel.spark.sql.hive.save.refresh.view").toBoolean
+  private def refresh_view: Boolean = spark.conf.get(WHEEL_SPARK_SQL_HIVE_SAVE_REFRESH_VIEW).toBoolean
 
   /**
     * 视图写入hive
@@ -80,7 +69,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
     */
   def <==(view: String, table: String = null,
           p: partition = null,
-          save_mode: SaveMode = save_mode,
+          save_mode: SaveMode = get_save_mode("wheel.spark.sql.hive.save.mode"),
           format_source: String = format_source,
           coalesce_limit: Long = coalesce_limit,
           refresh_view: Boolean = refresh_view): Long = {
@@ -288,7 +277,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
     */
   def save(df: DataFrame, table: String,
            p: partition = null,
-           save_mode: SaveMode = save_mode,
+           save_mode: SaveMode = get_save_mode("wheel.spark.sql.hive.save.mode"),
            format_source: String = format_source,
            coalesce_limit: Long = coalesce_limit,
            refresh_view: Boolean = refresh_view,
