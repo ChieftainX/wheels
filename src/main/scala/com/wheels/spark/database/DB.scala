@@ -48,6 +48,7 @@ class DB(sql: SQL) extends Serializable {
 
     private def mk_options(table: String, conf: Map[String, String]): Map[String, String] =
       (Map(
+        "driver" -> driver,
         "url" -> url,
         "dbtable" -> table,
         "user" -> user,
