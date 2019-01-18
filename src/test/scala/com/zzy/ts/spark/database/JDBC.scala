@@ -18,7 +18,7 @@ class JDBC {
     val conf = Map(
       "spark.master" -> "local[*]",
       "zzy.param" -> "fk",
-      WHEEL_SPARK_SQL_JDBC_SAVE_MODE -> "append"
+      WHEEL_SPARK_SQL_JDBC_SAVE_MODE -> "overwrite"
     )
 
     sql = Core(
@@ -49,6 +49,7 @@ class JDBC {
         |  PRIMARY KEY (`ID`)
         |) ENGINE=InnoDB DEFAULT CHARSET=utf8
       """.stripMargin)
+    admin.exe("insert into ts_tb(id,msg)values('abc-001','fuck!!!')")
     admin.close()
   }
 
@@ -57,19 +58,16 @@ class JDBC {
   @DisplayName("测试jdbc save")
   def ts_jdbc_save(): Unit = {
     DBS.emp(sql)
-
     val jdbc = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root")
-
     jdbc <== "emp"
   }
 
   @Test
   @DisplayName("测试jdbc read")
   def ts_jdbc_read(): Unit = {
-
     val jdbc = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root")
-    jdbc ==> "emp"
-    sql show "emp"
+    jdbc ==> "ts_tb"
+    assert((sql count "ts_tb") == 1)
   }
 
 
