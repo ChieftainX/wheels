@@ -10,38 +10,51 @@ class DB(sql: SQL) extends Serializable {
 
   val spark: SparkSession = sql.spark
 
-  case class jdbc(driver: String, url: String, user: String = null, pwd: String = null) {
+  case class jdbc(driver: String, url: String,
+                  user: String = null, pwd: String = null,
+                  global_conf: Map[String, String] = Map.empty) {
 
     import java.sql.{Connection, DriverManager, Statement}
     import com.wheels.common.Conf.WHEEL_SPARK_SQL_JDBC_SAVE_MODE
 
+    def ==>(table: String, alias: String = null, conf: Map[String, String] = Map.empty): DataFrame = {
+      val df = spark.read.format("jdbc").options(mk_options(table, conf)).load()
+      df.createOrReplaceTempView(if (alias ne null) alias else table)
+      df
+    }
+
     def <==(view: String, partition_num: Int = -1, table: String = null,
-            save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE)): Long = {
+            save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE),
+            conf: Map[String, String] = Map.empty): Long = {
       val tbn = if (table ne null) table else view
-      dataframe(sql view view, tbn, partition_num, save_mode)
+      dataframe(sql view view, tbn, partition_num, save_mode, conf)
     }
 
     def dataframe(df: DataFrame, table: String, partition_num: Int = -1,
-                  save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE)): Long = {
+                  save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE),
+                  conf: Map[String, String] = Map.empty): Long = {
       val is_uncache = df.storageLevel eq StorageLevel.NONE
       if (is_uncache) df.cache
       val ct = df.count
       df.repartition(if (partition_num > 0) partition_num else sql.DOP, rand())
         .write
         .format("jdbc")
-        .options(
-          Map(
-            "url" -> url,
-            "dbtable" -> table,
-            "user" -> user,
-            "password" -> pwd
-          ).filter(_._2 ne null)
-        )
+        .options(mk_options(table, conf))
         .mode(save_mode)
         .save()
       if (is_uncache) df.unpersist
       ct
     }
+
+    private def mk_options(table: String, conf: Map[String, String]): Map[String, String] =
+      (Map(
+        "url" -> url,
+        "dbtable" -> table,
+        "user" -> user,
+        "password" -> pwd
+      ) ++ {
+        if (conf.isEmpty) global_conf else conf
+      }).filter(_._2 ne null)
 
     case class admin() {
 
