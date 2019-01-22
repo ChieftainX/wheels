@@ -1,6 +1,6 @@
 package com.wheels.spark.database
 
-import com.wheels.exception.{IllegalParamException, NotSupportException}
+import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.rand
@@ -25,54 +25,7 @@ class DB(sql: SQL) extends Serializable {
       df
     }
 
-    case class table(table: String, view: String = null) {
-      private var condition: String = _
-      private var partition_col: String = _
-      private var select_cols: Seq[String] = Seq.empty
-
-      def select(col: String, cols: String*): this.type = {
-        select_cols = Seq(col) ++ cols
-        this
-      }
-
-      def where(expr: String): this.type = {
-        condition = expr
-        this
-      }
-
-      def partition(col_name: String): this.type = {
-        partition_col = col_name.trim
-        this
-      }
-
-      def load(fetchsize: Int = 10000, partition_num: Int = sql.DOP): DataFrame = {
-        val cols = get_cols(table)
-        val pc = if (partition_col ne null) partition_col else cols.head
-        val pn = partition_num
-        val err_cols = select_cols.filterNot(cols.contains)
-        if (err_cols.nonEmpty)
-          throw IllegalParamException(s"${err_cols.mkString(",")} not in table $table[${cols.mkString(",")}]")
-        val scs = if (select_cols.isEmpty) cols else select_cols
-        val sql_str = {
-          s"select ${scs.mkString(",")} from $table where ${
-            if (condition ne null) condition else "1=1"
-          } and ${
-            if (driver.contains("mysql") || driver.contains("postgresql")) s"((ascii(md5($pc)) + $pn) % $pn) = "
-            else if (driver.contains("oracle")) "mod(ascii(Utl_Raw.Cast_To_Raw(sys.dbms_obfuscation_toolkit" +
-              s".md5(input_string => $pc))) + $pn,$pn) = "
-            else {
-              throw NotSupportException(s"you driver $driver not support,only support mysql,oracle,postgresql drivers.")
-              ""
-            }
-          }"
-        }
-        val df = sql read ""
-        sql register(df, if (view ne null) view else table)
-        df
-      }
-    }
-
-    def <==(view: String, partition_num: Int = -1, table: String = null,
+    def <==(view: String, partition_num: Int = sql.DOP, table: String = null,
             save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE),
             conf: Map[String, String] = Map.empty): Long = {
       val tbn = if (table ne null) table else view
@@ -85,6 +38,7 @@ class DB(sql: SQL) extends Serializable {
       val is_uncache = df.storageLevel eq StorageLevel.NONE
       if (is_uncache) df.cache
       val ct = df.count
+
       df.repartition(partition_num, rand())
         .write
         .format("jdbc")
@@ -119,7 +73,7 @@ class DB(sql: SQL) extends Serializable {
         "password" -> pwd
       ) ++ {
         import DBP._
-        val pn = sql.DOP
+        val pn = sql.DOP.toString
         val first_col = get_cols(table).head
         val pc = {
           if (driver.contains(MYSQL) || driver.contains(POSTGRESQL)) s"((ascii(md5($first_col)) + $pn) % $pn)"
@@ -129,9 +83,9 @@ class DB(sql: SQL) extends Serializable {
         }
         if (pc ne null) {
           Map(
-            "numPartitions" -> s"$pn",
+            "numPartitions" -> pn,
             "lowerBound" -> "0",
-            "upperBound" -> s"${pn - 1}",
+            "upperBound" -> pn,
             "partitionColumn" -> pc
           )
         } else Map.empty[String, String]
@@ -157,9 +111,7 @@ class DB(sql: SQL) extends Serializable {
         catch {
           case e: Exception =>
             throw e
-        } finally {
-          if (st ne null) st.close()
-        }
+        } finally if (st ne null) st.close()
         r
       }
 
