@@ -50,6 +50,7 @@ class JDBC {
         |) ENGINE=InnoDB DEFAULT CHARSET=utf8
       """.stripMargin)
     admin.exe("insert into ts_tb(id,msg)values('abc-001','fuck!!!')")
+    println(jdbc.get_cols("ts_tb"))
     admin.close()
   }
 
@@ -68,6 +69,14 @@ class JDBC {
     val jdbc = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root")
     jdbc ==> "ts_tb"
     assert((sql count "ts_tb") == 1)
+    val dop = sql.DOP
+    jdbc ==> ("emp", alias = "emp_zzy", conf = Map(
+      "numPartitions" -> s"$dop",
+      "lowerBound" -> "0",
+      "upperBound" -> s"${dop - 1}",
+      "partitionColumn" -> s"((ascii(md5(user_id)) + $dop) % $dop)"
+    ))
+    sql show "emp_zzy"
   }
 
 

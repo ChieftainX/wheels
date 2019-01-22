@@ -1,10 +1,12 @@
 package com.wheels.spark.database
 
-import com.wheels.exception.IllegalParamException
+import com.wheels.exception.{IllegalParamException, NotSupportException}
 import com.wheels.spark.SQL
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.rand
 import org.apache.spark.storage.StorageLevel
+
+import scala.collection.mutable.ArrayBuffer
 
 class DB(sql: SQL) extends Serializable {
 
@@ -19,8 +21,55 @@ class DB(sql: SQL) extends Serializable {
 
     def ==>(table: String, alias: String = null, conf: Map[String, String] = Map.empty): DataFrame = {
       val df = spark.read.format("jdbc").options(mk_options(table, conf)).load()
-      df.createOrReplaceTempView(if (alias ne null) alias else table)
+      sql register(df, if (alias ne null) alias else table)
       df
+    }
+
+    case class table(table: String, view: String = null) {
+      private var condition: String = _
+      private var partition_col: String = _
+      private var select_cols: Seq[String] = Seq.empty
+
+      def select(col: String, cols: String*): this.type = {
+        select_cols = Seq(col) ++ cols
+        this
+      }
+
+      def where(expr: String): this.type = {
+        condition = expr
+        this
+      }
+
+      def partition(col_name: String): this.type = {
+        partition_col = col_name.trim
+        this
+      }
+
+      def load(fetchsize: Int = 10000, partition_num: Int = sql.DOP): DataFrame = {
+        val cols = get_cols(table)
+        val pc = if (partition_col ne null) partition_col else cols.head
+        val pn = partition_num
+        val err_cols = select_cols.filterNot(cols.contains)
+        if (err_cols.nonEmpty)
+          throw IllegalParamException(s"${err_cols.mkString(",")} not in table $table[${cols.mkString(",")}]")
+        val scs = if (select_cols.isEmpty) cols else select_cols
+        val sql_str = {
+          s"select ${scs.mkString(",")} from $table where ${
+            if (condition ne null) condition else "1=1"
+          } and ${
+            if (driver.contains("mysql") || driver.contains("postgresql")) s"((ascii(md5($pc)) + $pn) % $pn) = "
+            else if (driver.contains("oracle")) "mod(ascii(Utl_Raw.Cast_To_Raw(sys.dbms_obfuscation_toolkit" +
+              s".md5(input_string => $pc))) + $pn,$pn) = "
+            else {
+              throw NotSupportException(s"you driver $driver not support,only support mysql,oracle,postgresql drivers.")
+              ""
+            }
+          }"
+        }
+        val df = sql read ""
+        sql register(df, if (view ne null) view else table)
+        df
+      }
     }
 
     def <==(view: String, partition_num: Int = -1, table: String = null,
@@ -30,13 +79,13 @@ class DB(sql: SQL) extends Serializable {
       dataframe(sql view view, tbn, partition_num, save_mode, conf)
     }
 
-    def dataframe(df: DataFrame, table: String, partition_num: Int = -1,
+    def dataframe(df: DataFrame, table: String, partition_num: Int = sql.DOP,
                   save_mode: SaveMode = sql.get_save_mode(WHEEL_SPARK_SQL_JDBC_SAVE_MODE),
                   conf: Map[String, String] = Map.empty): Long = {
       val is_uncache = df.storageLevel eq StorageLevel.NONE
       if (is_uncache) df.cache
       val ct = df.count
-      df.repartition(if (partition_num > 0) partition_num else sql.DOP, rand())
+      df.repartition(partition_num, rand())
         .write
         .format("jdbc")
         .options(mk_options(table, conf))
@@ -46,7 +95,22 @@ class DB(sql: SQL) extends Serializable {
       ct
     }
 
-    private def mk_options(table: String, conf: Map[String, String]): Map[String, String] =
+    def get_cols(table: String): Seq[String] = {
+      val conn = admin().conn
+      val rs = conn.getMetaData.getColumns(conn.getCatalog, null, table, "%")
+      val cols = ArrayBuffer[String]()
+      while (rs.next()) cols.append(rs.getString("COLUMN_NAME").toLowerCase)
+      conn.close()
+      cols
+    }
+
+    object DBP {
+      lazy val MYSQL = "mysql"
+      lazy val POSTGRESQL = "postgresql"
+      lazy val ORACLE = "oracle"
+    }
+
+    private def mk_options(table: String, conf: Map[String, String]): Map[String, String] = {
       (Map(
         "driver" -> driver,
         "url" -> url,
@@ -54,8 +118,27 @@ class DB(sql: SQL) extends Serializable {
         "user" -> user,
         "password" -> pwd
       ) ++ {
+        import DBP._
+        val pn = sql.DOP
+        val first_col = get_cols(table).head
+        val pc = {
+          if (driver.contains(MYSQL) || driver.contains(POSTGRESQL)) s"((ascii(md5($first_col)) + $pn) % $pn)"
+          else if (driver.contains(ORACLE)) "mod(ascii(Utl_Raw.Cast_To_Raw(sys.dbms_obfuscation_toolkit" +
+            s".md5(input_string => $first_col))) + $pn,$pn)"
+          else null
+        }
+        if (pc ne null) {
+          Map(
+            "numPartitions" -> s"$pn",
+            "lowerBound" -> "0",
+            "upperBound" -> s"${pn - 1}",
+            "partitionColumn" -> pc
+          )
+        } else Map.empty[String, String]
+      } ++ {
         if (conf.isEmpty) global_conf else conf
       }).filter(_._2 ne null)
+    }
 
     case class admin() {
 
