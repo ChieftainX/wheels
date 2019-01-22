@@ -70,7 +70,8 @@ class DB(sql: SQL) extends Serializable {
         "url" -> url,
         "dbtable" -> table,
         "user" -> user,
-        "password" -> pwd
+        "password" -> pwd,
+        "fetchsize" -> "10000"
       ) ++ {
         import DBP._
         val pn = sql.DOP.toString
