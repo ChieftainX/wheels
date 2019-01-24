@@ -2,7 +2,7 @@ name := "wheels"
 
 isSnapshot := true
 
-version := "0.2.5" + {
+version := "0.2.6" + {
   if (isSnapshot.value) "-SNAPSHOT"
   else ""
 }

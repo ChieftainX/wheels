@@ -397,6 +397,8 @@ class TS {
   def ts_batch(): Unit = {
     DBS.movielens_ratings(sql)
 
+    sql repartition "movielens_ratings"
+
     val total_count = sql count "movielens_ratings"
 
     var total_count_ = 0l

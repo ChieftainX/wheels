@@ -10,7 +10,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.ml.linalg.{DenseVector, Vectors}
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
-import org.apache.spark.sql.functions.{broadcast, col, lit}
+import org.apache.spark.sql.functions.{broadcast, col, lit, rand}
 import org.apache.spark.sql.types.{DataType, StructType}
 import org.apache.spark.storage.StorageLevel
 
@@ -165,6 +165,26 @@ class SQL(spark: SparkSession) extends Core(spark) {
     * @param view 视图名称
     */
   def desc(view: String): Unit = spark.table(view).printSchema()
+
+  /**
+    * 视图重分区
+    *
+    * @param view 待处理待视图
+    * @param num  分区个数
+    * @param cols 用于分区的列名称
+    */
+  def repartition(view: String, num: Int = 0, cols: Seq[String] = Seq.empty): DataFrame = {
+    log.info(s"view[$view] will repartition")
+    val df = this view view
+    if (num < 1) {
+      if (cols.isEmpty) this register(df.repartition(rand), view)
+      else this register(df.repartition(cols.map(col): _*), view)
+    } else {
+      if (cols.isEmpty) this register(df.repartition(num, rand), view)
+      else this register(df.repartition(num, cols.map(col): _*), view)
+    }
+
+  }
 
   /**
     * 对视图进行去重

@@ -71,10 +71,12 @@ class DB(sql: SQL) extends Serializable {
         "dbtable" -> table,
         "user" -> user,
         "password" -> pwd,
-        "fetchsize" -> "10000"
+        "fetchsize" -> "5000"
       ) ++ {
         import DBP._
-        val pn = sql.DOP.toString
+        val pn = {
+          if (sql.DOP > 10) 10 else sql.DOP
+        }.toString
         val first_col = get_cols(table).head
         val pc = {
           if (driver.contains(MYSQL) || driver.contains(POSTGRESQL)) s"((ascii(md5($first_col)) + $pn) % $pn)"
@@ -87,7 +89,7 @@ class DB(sql: SQL) extends Serializable {
             "numPartitions" -> pn,
             "lowerBound" -> "0",
             "upperBound" -> pn,
-            "partitionColumn" -> pc
+            "partitionColumn" -> s"$pc + 1"
           )
         } else Map.empty[String, String]
       } ++ {
