@@ -70,7 +70,7 @@ class JDBC {
     jdbc ==> "ts_tb"
     assert((sql count "ts_tb") == 1)
     jdbc ==> "emp"
-    sql show "emp"
+    sql <== "emp"
   }
 
 

@@ -19,10 +19,21 @@ class DB(sql: SQL) extends Serializable {
     import java.sql.{Connection, DriverManager, Statement}
     import com.wheels.common.Conf.WHEEL_SPARK_SQL_JDBC_SAVE_MODE
 
+    object DBP {
+      lazy val MYSQL = "mysql"
+      lazy val POSTGRESQL = "postgresql"
+      lazy val ORACLE = "oracle"
+      lazy val WHEELS_PART_COL = "wheels_part_col"
+      lazy val ORACLE_PART_NUM = "1000"
+
+    }
+
+    import DBP._
+
     def ==>(table: String, alias: String = null, conf: Map[String, String] = Map.empty): DataFrame = {
-      val df = spark.read.format("jdbc").options(mk_options(table, conf)).load()
-      sql register(df, if (alias ne null) alias else table)
-      df
+      val df = spark.read.format("jdbc").options(read_ops(table, conf)).load()
+      val r = if (driver.contains(ORACLE)) df.drop(WHEELS_PART_COL) else df
+      sql register(r, if (alias ne null) alias else table)
     }
 
     def <==(view: String, partition_num: Int = sql.DOP, table: String = null,
@@ -42,7 +53,7 @@ class DB(sql: SQL) extends Serializable {
       df.repartition(partition_num, rand())
         .write
         .format("jdbc")
-        .options(mk_options(table, conf))
+        .options(save_ops(table, conf))
         .mode(save_mode)
         .save()
       if (is_uncache) df.unpersist
@@ -58,41 +69,63 @@ class DB(sql: SQL) extends Serializable {
       cols
     }
 
-    object DBP {
-      lazy val MYSQL = "mysql"
-      lazy val POSTGRESQL = "postgresql"
-      lazy val ORACLE = "oracle"
+    def get_first_col(table: String): String = {
+      val conn = admin().conn
+      val rs = conn.getMetaData.getColumns(conn.getCatalog, null, table, "%")
+      rs.next()
+      val first_col = rs.getString("COLUMN_NAME").toLowerCase
+      conn.close()
+      first_col
     }
 
-    private def mk_options(table: String, conf: Map[String, String]): Map[String, String] = {
+    private def read_ops(table: String, conf: Map[String, String]): Map[String, String] = {
       (Map(
         "driver" -> driver,
         "url" -> url,
-        "dbtable" -> table,
+        "dbtable" -> {
+          if (driver.contains(ORACLE))
+            s"(select t.*,mod(rownum,$ORACLE_PART_NUM)+1 $WHEELS_PART_COL from $table t) tb"
+          else table
+        },
         "user" -> user,
         "password" -> pwd,
         "fetchsize" -> "5000"
       ) ++ {
-        import DBP._
         val pn = {
           if (sql.DOP > 10) 10 else sql.DOP
         }.toString
-        val first_col = get_cols(table).head
+        val first_col = get_first_col(table)
         val pc = {
-          if (driver.contains(MYSQL) || driver.contains(POSTGRESQL)) s"((ascii(md5($first_col)) + $pn) % $pn)"
-          else if (driver.contains(ORACLE)) "mod(ascii(Utl_Raw.Cast_To_Raw(sys.dbms_obfuscation_toolkit" +
-            s".md5(input_string => $first_col))) + $pn,$pn)"
+          if (driver.contains(MYSQL) || driver.contains(POSTGRESQL))
+            s"((ascii(md5($first_col)) + $pn) % $pn)"
+          else if (driver.contains(ORACLE)) WHEELS_PART_COL
           else null
         }
         if (pc ne null) {
           Map(
             "numPartitions" -> pn,
             "lowerBound" -> "0",
-            "upperBound" -> pn,
-            "partitionColumn" -> s"$pc + 1"
+            "upperBound" -> {
+              if (driver.contains(ORACLE)) ORACLE_PART_NUM
+              else pn
+            },
+            "partitionColumn" -> pc
           )
         } else Map.empty[String, String]
       } ++ {
+        if (conf.isEmpty) global_conf else conf
+      }).filter(_._2 ne null)
+    }
+
+    private def save_ops(table: String, conf: Map[String, String]): Map[String, String] = {
+      (Map(
+        "driver" -> driver,
+        "url" -> url,
+        "dbtable" -> table,
+        "user" -> user,
+        "password" -> pwd,
+        "batchsize" -> "1000"
+      ) ++ {
         if (conf.isEmpty) global_conf else conf
       }).filter(_._2 ne null)
     }
