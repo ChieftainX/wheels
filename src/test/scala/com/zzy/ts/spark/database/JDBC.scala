@@ -73,6 +73,22 @@ class JDBC {
     sql <== "emp"
   }
 
+  @Test
+  @DisplayName("测试jdbc 带有条件的 read")
+  def ts_jdbc_read_ex(): Unit = {
+    val jdbc = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/wheels", "root")
+    jdbc ==> ("select user_id uid,org_id from emp where org_id = 'o-001'","eee",conf = Map(
+      "partitionColumn" -> "uid"
+    ))
+    sql show "eee"
+
+    jdbc ==> ("emp",conf = Map(
+      "partitionColumn" -> "org_id"
+    ))
+    sql show "emp"
+
+  }
+
 
   @AfterEach
   def after(): Unit = {}

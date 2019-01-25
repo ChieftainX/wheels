@@ -25,13 +25,22 @@ class DB(sql: SQL) extends Serializable {
       lazy val ORACLE = "oracle"
       lazy val WHEELS_PART_COL = "wheels_part_col"
       lazy val ORACLE_PART_NUM = "1000"
+      lazy val TABLE_ALIAS = "wheels_jdbc_tb"
 
     }
 
     import DBP._
 
     def ==>(table: String, alias: String = null, conf: Map[String, String] = Map.empty): DataFrame = {
-      val df = spark.read.format("jdbc").options(read_ops(table, conf)).load()
+      val is_sql = if (table.contains(" ")) {
+        if (alias eq null)
+          throw IllegalParamException("when use sql table,must have a alias.")
+        if (conf.getOrElse("partitionColumn", null) eq null)
+          throw IllegalParamException("when use sql table,must have a partitionColumn.")
+        true
+      } else false
+      val df = spark.read.format("jdbc")
+        .options(read_ops(if (is_sql) s"($table) $TABLE_ALIAS" else table, conf)).load()
       val r = if (driver.contains(ORACLE)) df.drop(WHEELS_PART_COL) else df
       sql register(r, if (alias ne null) alias else table)
     }
@@ -84,7 +93,9 @@ class DB(sql: SQL) extends Serializable {
         "url" -> url,
         "dbtable" -> {
           if (driver.contains(ORACLE))
-            s"(select t.*,mod(rownum,$ORACLE_PART_NUM)+1 $WHEELS_PART_COL from $table t) tb"
+            s"(select t.*,mod(rownum,$ORACLE_PART_NUM)+1 $WHEELS_PART_COL from $table ${
+              if (table.contains(" ")) "" else "t"
+            }) tb"
           else table
         },
         "user" -> user,
@@ -94,10 +105,14 @@ class DB(sql: SQL) extends Serializable {
         val pn = {
           if (sql.DOP > 10) 10 else sql.DOP
         }.toString
-        val first_col = get_first_col(table)
         val pc = {
-          if (driver.contains(MYSQL) || driver.contains(POSTGRESQL))
-            s"((ascii(md5($first_col)) + $pn) % $pn)"
+          if (driver.contains(MYSQL) || driver.contains(POSTGRESQL)) {
+            if (table.contains(" ") || (conf.getOrElse("partitionColumn", null) ne null)) ""
+            else {
+              val first_col = get_first_col(table)
+              s"((ascii(md5($first_col)) + $pn) % $pn)"
+            }
+          }
           else if (driver.contains(ORACLE)) WHEELS_PART_COL
           else null
         }
