@@ -59,7 +59,7 @@ class DB(sql: SQL) extends Serializable {
       if (is_uncache) df.cache
       val ct = df.count
 
-      df.repartition(partition_num, rand())
+      df.repartition(partition_num, rand)
         .write
         .format("jdbc")
         .options(save_ops(table, conf))

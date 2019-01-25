@@ -315,7 +315,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
         log.info(s"$table_ length is $ct,begin save")
         if (p eq null) {
           val coalesce_num = (1 + ct / coalesce_limit).toInt
-          val writer = df.repartition(coalesce_num).write
+          val writer = df.repartition(coalesce_num,rand).write
           save_mode match {
             case SaveMode.Append =>
               writer.insertInto(table_)
@@ -343,7 +343,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
             val pdf_ = pdf.where(ps.mkString(" and ")).cache
             val ct_ = pdf_.count
             val coalesce_num = (1 + ct_ / coalesce_limit).toInt
-            val writer = pdf_.repartition(coalesce_num).write
+            val writer = pdf_.repartition(coalesce_num,rand).write
             if (is_init) {
               writer.mode(save_mode)
                 .format(format_source)

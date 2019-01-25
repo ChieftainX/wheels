@@ -167,7 +167,7 @@ object Core {
       .config("spark.debug.maxToStringFields", "10086")
       .config("spark.sql.broadcastTimeout", "3000")
       .config(WHEEL_SPARK_SQL_HIVE_SAVE_MODE, "overwrite")
-      .config(WHEEL_SPARK_SQL_JDBC_SAVE_MODE, "error")
+      .config(WHEEL_SPARK_SQL_JDBC_SAVE_MODE, "append")
       .config(WHEEL_SPARK_SQL_HIVE_SAVE_FORMAT, "parquet")
       .config(WHEEL_SPARK_SQL_HIVE_SAVE_FILE_LINES_LIMIT, "1000000")
       .config(WHEEL_SPARK_SQL_HIVE_SAVE_REFRESH_VIEW, "false")
