@@ -17,16 +17,18 @@ class DB(sql: SQL) extends Serializable {
     import org.elasticsearch.spark.sql.EsSparkSQL
 
     def <==(view: String, r: String = resource,
-            cf: Map[String, String] = Map.empty): Long = dataframe(sql view view, resource, cf)
+            cf: Map[String, String] = Map.empty,
+            partition_num: Int = sql.DOP): Long = dataframe(sql view view, resource, cf)
 
     def dataframe(df: DataFrame, r: String = resource,
-                  cf: Map[String, String] = Map.empty): Long = {
+                  cf: Map[String, String] = Map.empty,
+                  partition_num: Int = sql.DOP): Long = {
       val mid = "es.mapping.id"
       val is_uncache = df.storageLevel eq StorageLevel.NONE
       if (is_uncache) df.cache
       val ct = df.count
       val cf_ = Map("es.index.auto.create" -> "true") ++ conf ++ Map("es.resource.write" -> r) ++ cf
-      EsSparkSQL.saveToEs(df, {
+      EsSparkSQL.saveToEs(df.repartition(partition_num, rand), {
         if (cf_.exists(_._1 == mid)) cf_
         else cf_ ++ Map(mid -> df.columns.head)
       })
