@@ -50,6 +50,7 @@ scalaVersion := "2.11.8"
 lazy val spark_version = "2.2.1"
 lazy val hbase_version = "1.0.0"
 lazy val jedis_version = "2.9.0"
+lazy val es_version = "6.5.4"
 
 resolvers ++= Seq(
   "aliyun" at "http://maven.aliyun.com/nexus/content/groups/public",
@@ -62,11 +63,11 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-mllib" % spark_version % Provided,
   "org.apache.spark" %% "spark-streaming" % spark_version % Provided,
   "org.apache.spark" %% "spark-sql-kafka-0-10" % spark_version % Provided
-
 )
 
 libraryDependencies ++= Seq(
   "redis.clients" % "jedis" % jedis_version % Provided,
+  "org.elasticsearch" %% "elasticsearch-spark-20" % es_version % Provided,
   "mysql" % "mysql-connector-java" % "8.0.13" % Provided,
   //调试低版本kafka兼容会用到
   //"org.apache.kafka" % "kafka-clients" % "0.8.2.0" % Provided,
