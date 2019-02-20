@@ -26,6 +26,7 @@
   - [redis](#db-model-redis)
   - [kafka](#db-model-kafka)
   - [jdbc](#db-model-jdbc)
+  - [elasticsearch](#db-model-es)
 - ***[ML 模块](#ml-model)***
   - [开启方式](#ml-model-open)
   - [特征处理](#ml-model-f)
@@ -677,7 +678,33 @@ kafka <== "your_view"
 val mysql = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/yourdb", "username")
 ```
 
+数据读取：
 
+```
+mysql ==> "your_mysql_table"
+```
+
+数据写入：
+
+```
+mysql <== "your_view"
+```
+
+DDL操作：
+
+```
+val admin = mysql.admin()
+admin.exe("your_sql...")
+```
+
+### <a name='db-model-es'>elasticsearch</a>
+
+使用方式：
+
+```
+val es = database.es("your-index/your-type")
+es <== "your_view"
+```
 
 ## <a name='ml-model'>ML 模块</a>
 
