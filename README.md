@@ -39,7 +39,6 @@ sql ==> (
 sql <== "emp_res" //保存结果数据到默认存储(例如hive)
 
 //写入其他存储
-
 val database: DB = sql.support_database
 
 //写hbase
