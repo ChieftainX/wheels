@@ -25,6 +25,7 @@
   - [hbase](#db-model-hbase)
   - [redis](#db-model-redis)
   - [kafka](#db-model-kafka)
+  - [jdbc](#db-model-jdbc)
 - ***[ML 模块](#ml-model)***
   - [开启方式](#ml-model-open)
   - [特征处理](#ml-model-f)
@@ -668,6 +669,15 @@ kafka <== "your_view"
 val kafka = database.kafka_low(servers = "yourhost0:port0,yourhost1:port1,yourhost2:port2", "your-topic")
 kafka <== "your_view"
 ```
+
+### <a name='db-model-jdbc'>jdbc</a>
+使用方式(以mysql为例)：
+
+```
+val mysql = database.jdbc("com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost/yourdb", "username")
+```
+
+
 
 ## <a name='ml-model'>ML 模块</a>
 
