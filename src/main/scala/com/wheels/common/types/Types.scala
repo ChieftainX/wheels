@@ -1,6 +1,6 @@
 package com.wheels.common.types
 
-abstract class Enum extends Serializable {
+abstract class Types extends Serializable {
   protected var value: String = _
 
   protected def $(v: String): this.type = {

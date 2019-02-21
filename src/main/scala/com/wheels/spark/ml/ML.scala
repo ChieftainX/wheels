@@ -1,6 +1,5 @@
 package com.wheels.spark.ml
 
-import com.wheels.common.types.Enum
 import com.wheels.spark.SQL
 import com.wheels.spark.ml.lib.{Classification, Features, Recommendation}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
@@ -55,11 +54,5 @@ class ML(val sql: SQL) extends Serializable {
       sql register(df, output)
     }
   }
-
-}
-
-object ML {
-
-
 
 }

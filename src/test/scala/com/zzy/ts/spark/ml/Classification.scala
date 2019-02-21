@@ -45,11 +45,31 @@ class Classification {
   def ts_lr_binomial(): Unit = {
     DBS.sample_libsvm_data(sql)
 
+    sql.random_split("sample_libsvm_data", Array(0.7, 0.3), Array("train", "test"))
+
     val lr = classification.lr()
 
-    val model = lr ==> "sample_libsvm_data"
+    lr ==> "train"
+    lr <== "test"
 
-    model
+    println(s"ACC is ${lr <-- "test"}")
+
+  }
+
+  @Test
+  @DisplayName("测试Logistic Regression(classification)")
+  def ts_lr_classification(): Unit = {
+    DBS.sample_multiclass_classification_data(sql)
+
+    sql.random_split("sample_multiclass_classification_data", Array(0.7, 0.3), Array("train", "test"))
+
+    val lr = classification.lr()
+
+    lr ==> "train"
+    lr <== "test"
+
+    println(s"ACC is ${lr <-- "test"}")
+
   }
 
   @AfterEach

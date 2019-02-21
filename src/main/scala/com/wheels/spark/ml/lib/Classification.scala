@@ -24,10 +24,12 @@ class Classification(ml: ML) extends Serializable {
                 lower_bounds_on_intercepts: Vector = null,
                 upper_bounds_on_coefficients: Matrix = null,
                 upper_bounds_on_intercepts: Vector = null,
-                threshold: Double = null,
+                threshold: Double = -1,
                 thresholds: Array[Double] = null,
                 weight_col: String = null,
-                agg_depth: Int = 2) {
+                agg_depth: Int = 2,
+                see_prediction: Boolean = false,
+                see_probability: Boolean = false) {
 
     import org.apache.spark.ml.classification.LogisticRegression
     import org.apache.spark.ml.classification.LogisticRegressionModel
@@ -49,27 +51,49 @@ class Classification(ml: ML) extends Serializable {
     if (lower_bounds_on_intercepts ne null) obj.setLowerBoundsOnIntercepts(lower_bounds_on_intercepts)
     if (upper_bounds_on_coefficients ne null) obj.setUpperBoundsOnCoefficients(upper_bounds_on_coefficients)
     if (upper_bounds_on_intercepts ne null) obj.setUpperBoundsOnIntercepts(upper_bounds_on_intercepts)
-    if (threshold ne null) obj.setThreshold(threshold)
+    if (threshold >= 0.0) obj.setThreshold(threshold)
     if (thresholds ne null) obj.setThresholds(thresholds)
     if (weight_col ne null) obj.setWeightCol(weight_col)
 
-    def ==>(view: String): LogisticRegressionModel = model(sql view view)
+    var model: LogisticRegressionModel = _
 
-    def model(data: DataFrame): LogisticRegressionModel = obj.fit(data)
+    def ==>(view: String): LogisticRegressionModel = fit(sql view view)
+
+    def fit(data: DataFrame): LogisticRegressionModel = {
+      val m = obj.fit(data)
+      model = m
+      m
+    }
+
+    def <==(view: String): DataFrame = {
+      val prediction = transform(sql view view)
+      sql register(prediction,view)
+    }
+
+    def transform(data: DataFrame): DataFrame = {
+      val drop_cols = Array(if(!see_prediction) "rawPrediction" else null,
+        if(!see_probability) "probability" else null)
+          .filter(_ ne null)
+      val prediction = model.transform(data)
+      if(drop_cols.isEmpty) prediction else prediction.drop(drop_cols:_*)
+    }
 
     import com.wheels.common.types.Metric
+
+    def <--(view: String,
+            label_col: String = label_col,
+            prediction_col: String = "prediction",
+            metric: Metric = Metric.ACC): Double = evaluation(sql view view,label_col,prediction_col,metric)
 
     def evaluation(data: DataFrame,
                    label_col: String = label_col,
                    prediction_col: String = "prediction",
-                   metric: Metric = Metric.apply.ACC
-                  ): Double = {
-      val evaluator = new MulticlassClassificationEvaluator()
-        .setLabelCol(label_col)
-        .setPredictionCol(prediction_col)
-        .setMetricName(metric.get)
-      evaluator.evaluate(data)
-    }
+                   metric: Metric = Metric.ACC): Double =
+      new MulticlassClassificationEvaluator()
+      .setLabelCol(label_col)
+      .setPredictionCol(prediction_col)
+      .setMetricName(metric.get)
+      .evaluate(data)
 
   }
 

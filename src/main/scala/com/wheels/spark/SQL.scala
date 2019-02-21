@@ -284,6 +284,29 @@ class SQL(spark: SparkSession) extends Core(spark) {
   }
 
   /**
+    * 将视图按比例重新分配
+    *
+    * @param view         视图名称
+    * @param distribution 分配比例规则
+    * @param views        分配后的视图名称
+    * @return
+    */
+  def random_split(view: String, distribution: Array[Double],
+                   views: Array[String] = null): Array[DataFrame] = {
+    val dfs = (this view view).randomSplit(distribution)
+    assert(distribution.sum.toInt == 1)
+    if (views ne null) {
+      var index = 0
+      assert(distribution.length == views.length)
+      dfs.foreach(df => {
+        this register(df, views(index))
+        index += 1
+      })
+    }
+    dfs
+  }
+
+  /**
     * 将视图写入hive
     *
     * @param df             待保存dataframe
@@ -315,7 +338,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
         log.info(s"$table_ length is $ct,begin save")
         if (p eq null) {
           val coalesce_num = (1 + ct / coalesce_limit).toInt
-          val writer = df.repartition(coalesce_num,rand).write
+          val writer = df.repartition(coalesce_num, rand).write
           save_mode match {
             case SaveMode.Append =>
               writer.insertInto(table_)
@@ -343,7 +366,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
             val pdf_ = pdf.where(ps.mkString(" and ")).cache
             val ct_ = pdf_.count
             val coalesce_num = (1 + ct_ / coalesce_limit).toInt
-            val writer = pdf_.repartition(coalesce_num,rand).write
+            val writer = pdf_.repartition(coalesce_num, rand).write
             if (is_init) {
               writer.mode(save_mode)
                 .format(format_source)
