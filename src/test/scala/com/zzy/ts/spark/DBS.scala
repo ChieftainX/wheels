@@ -63,4 +63,14 @@ object DBS {
     sql register(user_dim, "user_dim", cache = true)
   }
 
+  def sample_libsvm_data(sql: SQL): Unit = {
+    val df = sql.spark.read.format("libsvm").load("data/sample_libsvm_data.txt")
+    sql register(df, "sample_libsvm_data")
+  }
+
+  def sample_multiclass_classification_data(sql: SQL): Unit = {
+    val df = sql.spark.read.format("libsvm").load("data/sample_multiclass_classification_data.txt")
+    sql register(df, "sample_multiclass_classification_data")
+  }
+
 }

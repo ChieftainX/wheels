@@ -1,18 +1,21 @@
 package com.wheels.spark.ml
 
+import com.wheels.common.types.Enum
 import com.wheels.spark.SQL
-import com.wheels.spark.ml.lib.{Features, Recommendation}
+import com.wheels.spark.ml.lib.{Classification, Features, Recommendation}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
 
-class ML(sql: SQL) extends Serializable {
+class ML(val sql: SQL) extends Serializable {
 
   val spark: SparkSession = sql.spark
 
   def recommendation: Recommendation = new Recommendation(this)
 
   def features: Features = new Features(this)
+
+  def classification: Classification = new Classification(this)
 
   /**
     * 联合加权配置项
@@ -52,6 +55,11 @@ class ML(sql: SQL) extends Serializable {
       sql register(df, output)
     }
   }
+
+}
+
+object ML {
+
 
 
 }
