@@ -52,6 +52,8 @@ class Classification {
     lr ==> "train"
     lr <== "test"
 
+    sql print_schema "test"
+
     println(s"ACC is ${lr <-- "test"}")
 
   }
@@ -66,9 +68,22 @@ class Classification {
     val lr = classification.lr()
 
     lr ==> "train"
-    lr <== "test"
 
-    println(s"ACC is ${lr <-- "test"}")
+    val model_path = "ml/lr_classification/"
+
+    lr.save(model_path)
+
+    val new_lr = classification.lr()
+
+    new_lr.load(model_path)
+
+    new_lr <== "test"
+
+    sql.show("test", 1000)
+
+    val acc = new_lr <-- "test"
+
+    println(s"ACC is $acc")
 
   }
 

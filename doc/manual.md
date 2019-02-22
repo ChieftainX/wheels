@@ -33,6 +33,8 @@
     - [索引化](#ml-model-f-indexer)
     - [标准化](#ml-model-f-scaler)
     - [联合加权](#ml-model-f-union-weighing)
+  - [分类算法](#ml-model-classification)
+    - [Logistic Regression](#ml-model-classification-lr)
   
 ## <a name='introduction'>简介</a>
 
@@ -962,3 +964,97 @@ sql show "recommend_weighing_res"
 |degree_col | 评分列名，默认为degree|
 |udf | 自定义聚合函数，默认为求和|
 |output | 输出视图名称，默认无输出视图|
+
+### <a name='ml-model-classification'>分类算法</a>
+
+启用：
+
+```
+val classification = ml.classification
+```
+
+#### <a name='ml-model-classification-lr'>Logistic Regression</a>
+
+启用（超参数及可配项全部使用默认值）：
+
+```
+val lr = classification.lr()
+```
+
+获取训练及测试数据：
+
+```
+sql.random_split("your_data_view", Array(0.8, 0.2), Array("your_train_view", "your_test_view"))
+```
+
+训练：
+
+```
+lr ==> "your_data_view"
+```
+
+预测：
+
+```
+lr <== "your_test_view"
+```
+
+评估：
+
+```
+val acc = lr <-- "your_test_view"
+println(s"ACC is $acc")
+```
+
+模型保存及加载：
+
+```
+lr.save("your_save_path")
+lr.load("your_save_path")
+```
+
+超参数及可配项：
+
+```
+features_col                 特征的列名称（类型需为org.apache.spark.ml.linalg.Vectors）
+label_col                    标签的列名称（需要为Double类型，类别必须为0.0, 1.0, 2.0 ... 顺序递增顺延）
+max_iter                     训练最大的迭代次数
+reg                          正则化系数
+family                       分类性质（二分类：binomial，多分类：multinomkial，根据训练数据自动判断auto）
+elastic_net                  正则化组合方式（0.0：L2正则化，1.0：L1正则化，0～1：两种正则化方式按比例组合）
+fit_intercept                是否训练截距
+standardization              是否标准化
+tolerance                    迭代收敛公差阈值
+lower_bounds_on_coefficients 系数下界
+lower_bounds_on_intercepts   截距下界
+upper_bounds_on_coefficients 系数上界
+upper_bounds_on_intercepts   截距上界
+threshold                    二分类阈值
+thresholds                   多分类阈值
+weight_col                   记录权重多列名称
+agg_depth                    聚合深度
+see_prediction               预测结果是否需要预测详细值
+see_probability              预测结果是否需要概率详细值
+
+*****类型及默认值*****
+
+features_col: String = "features"
+label_col: String = "label"
+max_iter: Int = 100
+reg: Double = 0.0
+family: String = "auto"
+elastic_net: Double = 0.0
+fit_intercept: Boolean = true
+standardization: Boolean = true
+tolerance: Double = 1E-6
+lower_bounds_on_coefficients: Matrix = null
+lower_bounds_on_intercepts: Vector = null
+upper_bounds_on_coefficients: Matrix = null
+upper_bounds_on_intercepts: Vector = null
+threshold: Double = -1
+thresholds: Array[Double] = null
+weight_col: String = null
+agg_depth: Int = 2
+see_prediction: Boolean = false
+see_probability: Boolean = false
+```

@@ -307,6 +307,13 @@ class SQL(spark: SparkSession) extends Core(spark) {
   }
 
   /**
+    * 输出视图schema
+    *
+    * @param view 视图名称
+    */
+  def print_schema(view: String): Unit = (this view view).printSchema()
+
+  /**
     * 将视图写入hive
     *
     * @param df             待保存dataframe
