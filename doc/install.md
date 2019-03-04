@@ -2,7 +2,7 @@
 
 ## 添加依赖（build.sbt）
 ```
-libraryDependencies += "com.kjzero" % "wheels" % "0.3.0"
+libraryDependencies += "com.kjzero" % "wheels" % "0.3.1-SNAPSHOT"
 ```
 
 ## 要求
