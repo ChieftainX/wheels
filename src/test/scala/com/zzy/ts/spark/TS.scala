@@ -22,6 +22,7 @@ class TS {
   var sql: SQL = _
   var catalog: Catalog = _
 
+  //"spark.sql.warehouse.dir"
   @BeforeAll
   def init_all(): Unit = {
     val conf = Map(
@@ -137,15 +138,7 @@ class TS {
       "emp_empty")
     assertEquals(0l, s2)
     val ct_emp_empty = sql count "emp_empty"
-    try {
-      sql count("emp_empty", true)
-    } catch {
-      case e: RealityTableNotFoundException =>
-        println(e.msg)
-        assertEquals("reality table not found: emp_empty", e.msg)
-    }
-
-    println(s"emp count[not reality] : $ct_emp_empty")
+    sql count("emp_empty", true)
     assertEquals(ct_emp_empty, 0l)
 
     val s3 = sql <== ("emp", save_mode = SaveMode.Append)
@@ -161,7 +154,13 @@ class TS {
       refresh_view = true)
     assertEquals(s1 + s3 + s4, sql count "emp")
 
-    sql show("emp", 100)
+    import com.wheels.spark.SQL.partition
+
+    val p = partition("org_id")
+
+    sql <== ("emp_empty", "emp_empty_p", p = p.table_init)
+
+    sql <== ("emp", "emp_empty_p", p)
 
   }
 

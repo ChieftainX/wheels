@@ -333,6 +333,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
            refresh_view: Boolean = refresh_view,
            db: String = catalog.currentDatabase): Long = {
     val table_ = if (table.contains(".")) table else s"$db.$table"
+    val table_exists = catalog.tableExists(table_)
     val is_uncache = df.storageLevel eq StorageLevel.NONE
     log.info(s"$table_[save mode:$save_mode,format source:$format_source,cache:${!is_uncache}] will be save")
     log.info(s"schema is:${df.schema}")
@@ -340,7 +341,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
     val ct = df.count
     ct match {
       case 0l =>
-        log.warn(s"$table_ is empty,skip save")
+        log.warn(s"$table_ is empty!")
       case _ =>
         log.info(s"$table_ length is $ct,begin save")
         if (p eq null) {
@@ -364,7 +365,7 @@ class SQL(spark: SparkSession) extends Core(spark) {
           val pdf = df.select(cols: _*)
           var is_init = p.is_init
           log.info(s"$table_ is partition table[init:$is_init],will run ${p.values.length} batch")
-          if ((!catalog.tableExists(table_)) && (!is_init)) {
+          if ((!table_exists) && (!is_init)) {
             log.warn(s"$table_ not exists, will auto create table")
             is_init = true
           }
@@ -390,6 +391,12 @@ class SQL(spark: SparkSession) extends Core(spark) {
           })
           pdf.unpersist
         }
+    }
+    if (ct == 0l && (!table_exists)) {
+      log.warn(s"no data, will auto create $table_")
+      val w = df.write.format(format_source)
+      if (p eq null) w.saveAsTable(table_)
+      else w.partitionBy(p.col: _*).saveAsTable(table_)
     }
     if (is_uncache) df.unpersist
     if (refresh_view && ct > 0l) this read table
