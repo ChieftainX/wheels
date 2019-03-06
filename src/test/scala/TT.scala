@@ -10,11 +10,9 @@ class TT {
 
   @Test
   def tt(): Unit = {
-    println(new Random().nextInt(10))
-    println(new Random().nextInt(10))
-    println(new Random().nextInt(10))
-    println(new Random().nextInt(10))
-    println(new Random().nextInt(10))
+   import com.wheels.common.types.Metric
+
+    println(Metric.ACC.toString)
 
 
 

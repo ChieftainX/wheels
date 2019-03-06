@@ -139,6 +139,7 @@ class Classification(ml: ML) extends Serializable {
       if (drop_cols.isEmpty) prediction else prediction.drop(drop_cols: _*)
     }
 
+    import com.wheels.common.types.Metric._
     import com.wheels.common.types.Metric
 
     /**
@@ -169,7 +170,7 @@ class Classification(ml: ML) extends Serializable {
       new MulticlassClassificationEvaluator()
         .setLabelCol(label_col)
         .setPredictionCol(prediction_col)
-        .setMetricName(metric.get)
+        .setMetricName(metric.toString)
         .evaluate(data)
 
   }

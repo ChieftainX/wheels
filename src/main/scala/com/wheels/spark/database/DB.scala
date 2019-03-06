@@ -4,13 +4,78 @@ import com.wheels.exception.IllegalParamException
 import com.wheels.spark.SQL
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.sql.functions.rand
+import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.storage.StorageLevel
 
+import scala.collection.JavaConversions.seqAsJavaList
 import scala.collection.mutable.ArrayBuffer
 
 class DB(sql: SQL) extends Serializable {
 
   val spark: SparkSession = sql.spark
+
+  case class kudu(master: String) {
+
+    import org.apache.kudu.client.KuduClient
+    import org.apache.kudu.spark.kudu._
+    import org.apache.kudu.client.CreateTableOptions
+    import com.wheels.common.types.CRUD
+    import CRUD._
+
+    def client: KuduClient = new KuduClient.KuduClientBuilder(master).build()
+
+    val context = new KuduContext(master, spark.sparkContext)
+
+    def ==>(table: String, view: String = null): DataFrame =
+      sql register(spark.read.options(Map("kudu.master" -> master, "kudu.table" -> table)).kudu,
+        if (view ne null) view else table)
+
+    def read(table: String, view: String = null): DataFrame = ==>(table, view)
+
+    def <==(view: String, table: String = null, mode: CRUD = UPSERT,
+            options: KuduWriteOptions = null): Long =
+      dataframe(sql view view, if (table eq null) view else table, mode, options)
+
+    def dataframe(df: DataFrame, table: String, mode: CRUD = UPSERT,
+                  options: KuduWriteOptions = null): Long = {
+      if (!context.tableExists(table) && Seq(UPSERT, INSERT).contains(mode)) {
+        val keys = Seq(df.columns.head)
+        val cto = new CreateTableOptions()
+        val buckets = 3
+        cto.addHashPartitions(seqAsJavaList(keys), buckets)
+        context.createTable(table, StructType(df.schema.map(sf => {
+          if (keys.contains(sf.name)) StructField(sf.name, sf.dataType, nullable = false)
+          else sf
+        })), keys, cto)
+      }
+      val options_ = if (options eq null) new KuduWriteOptions else options
+      val is_uncache = df.storageLevel eq StorageLevel.NONE
+      if (is_uncache) df.cache
+      val ct = df.count
+      mode match {
+        case UPSERT => context.upsertRows(df, table, options_)
+        case INSERT => context.insertRows(df, table, options_)
+        case DELETE => context.deleteRows(df, table, options_)
+        case UPDATE => context.updateRows(df, table, options_)
+      }
+      if (is_uncache) df.unpersist
+      ct
+    }
+
+    def upsert(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
+      dataframe(df, table, UPSERT, options)
+
+    def insert(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
+      dataframe(df, table, INSERT, options)
+
+    def delete(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
+      dataframe(df, table, DELETE, options)
+
+    def update(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
+      dataframe(df, table, UPDATE, options)
+
+
+  }
 
   case class es(resource: String, conf: Map[String, String] = Map.empty) {
 

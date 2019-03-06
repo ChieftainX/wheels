@@ -51,10 +51,13 @@ lazy val spark_version = "2.2.1"
 lazy val hbase_version = "1.0.0"
 lazy val jedis_version = "2.9.0"
 lazy val es_version = "6.5.4"
+lazy val kudu_version = "1.8.0"
 
 resolvers ++= Seq(
   "aliyun" at "http://maven.aliyun.com/nexus/content/groups/public",
-  "sonatype" at "https://oss.sonatype.org/content/repositories/snapshots"
+  "sonatype" at "https://oss.sonatype.org/content/repositories/snapshots",
+  "m2" at "http://repo2.maven.org/maven2/",
+  "m1" at "http://repo1.maven.org/maven2/"
 )
 
 libraryDependencies ++= Seq(
@@ -66,6 +69,8 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
+  "org.apache.kudu" % "kudu-client" % kudu_version % Provided,
+  "org.apache.kudu" %% "kudu-spark2" % kudu_version % Provided,
   "redis.clients" % "jedis" % jedis_version % Provided,
   "org.elasticsearch" %% "elasticsearch-spark-20" % es_version % Provided,
   "mysql" % "mysql-connector-java" % "8.0.13" % Provided,
