@@ -19,8 +19,8 @@ class DB(sql: SQL) extends Serializable {
     import org.apache.kudu.client.KuduClient
     import org.apache.kudu.spark.kudu._
     import org.apache.kudu.client.CreateTableOptions
-    import com.wheels.common.types.CRUD
-    import CRUD._
+    import com.wheels.common.types.Write
+    import Write._
 
     def client: KuduClient = new KuduClient.KuduClientBuilder(master).build()
 
@@ -32,11 +32,11 @@ class DB(sql: SQL) extends Serializable {
 
     def read(table: String, view: String = null): DataFrame = ==>(table, view)
 
-    def <==(view: String, table: String = null, mode: CRUD = UPSERT,
+    def <==(view: String, table: String = null, mode: Write = UPSERT,
             options: KuduWriteOptions = null): Long =
       dataframe(sql view view, if (table eq null) view else table, mode, options)
 
-    def dataframe(df: DataFrame, table: String, mode: CRUD = UPSERT,
+    def dataframe(df: DataFrame, table: String, mode: Write = UPSERT,
                   options: KuduWriteOptions = null): Long = {
       if (!context.tableExists(table) && Seq(UPSERT, INSERT).contains(mode)) {
         val keys = Seq(df.columns.head)
