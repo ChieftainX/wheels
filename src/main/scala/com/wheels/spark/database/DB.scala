@@ -33,46 +33,56 @@ class DB(sql: SQL) extends Serializable {
     def read(table: String, view: String = null): DataFrame = ==>(table, view)
 
     def <==(view: String, table: String = null, mode: Write = UPSERT,
-            options: KuduWriteOptions = null): Long =
-      dataframe(sql view view, if (table eq null) view else table, mode, options)
+            options: KuduWriteOptions = null, partition_num: Int = sql.DOP): Long =
+      dataframe(sql view view, if (table eq null) view else table, mode, options, partition_num)
 
     def dataframe(df: DataFrame, table: String, mode: Write = UPSERT,
-                  options: KuduWriteOptions = null): Long = {
-      if (!context.tableExists(table) && Seq(UPSERT, INSERT).contains(mode)) {
-        val keys = Seq(df.columns.head)
+                  options: KuduWriteOptions = null, partition_num: Int = sql.DOP,
+                  table_keys: Seq[String] = null,
+                  create_table_options: CreateTableOptions = null,
+                  table_buckets: Int = 3): Long = {
+      if (Seq(UPSERT, INSERT).contains(mode) && !context.tableExists(table)) {
+        val keys = if (table_keys eq null) Seq(df.columns.head) else table_keys
         val cto = new CreateTableOptions()
-        val buckets = 3
+        val buckets = table_buckets
         cto.addHashPartitions(seqAsJavaList(keys), buckets)
         context.createTable(table, StructType(df.schema.map(sf => {
           if (keys.contains(sf.name)) StructField(sf.name, sf.dataType, nullable = false)
           else sf
-        })), keys, cto)
+        })), keys, if (create_table_options eq null) cto else create_table_options)
       }
       val options_ = if (options eq null) new KuduWriteOptions else options
       val is_uncache = df.storageLevel eq StorageLevel.NONE
       if (is_uncache) df.cache
       val ct = df.count
+      val df_ = df.repartition(partition_num, rand)
       mode match {
-        case UPSERT => context.upsertRows(df, table, options_)
-        case INSERT => context.insertRows(df, table, options_)
-        case DELETE => context.deleteRows(df, table, options_)
-        case UPDATE => context.updateRows(df, table, options_)
+        case UPSERT => context.upsertRows(df_, table, options_)
+        case INSERT => context.insertRows(df_, table, options_)
+        case DELETE => context.deleteRows(df_, table, options_)
+        case UPDATE => context.updateRows(df_, table, options_)
       }
       if (is_uncache) df.unpersist
       ct
     }
 
-    def upsert(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
-      dataframe(df, table, UPSERT, options)
+    def upsert(df: DataFrame, table: String, options: KuduWriteOptions = null, partition_num: Int = sql.DOP,
+               table_keys: Seq[String] = null,
+               create_table_options: CreateTableOptions = null,
+               table_buckets: Int = 3): Long =
+      dataframe(df, table, UPSERT, options, partition_num, table_keys, create_table_options, table_buckets)
 
-    def insert(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
-      dataframe(df, table, INSERT, options)
+    def insert(df: DataFrame, table: String, options: KuduWriteOptions = null, partition_num: Int = sql.DOP,
+               table_keys: Seq[String] = null,
+               create_table_options: CreateTableOptions = null,
+               table_buckets: Int = 3): Long =
+      dataframe(df, table, INSERT, options, partition_num, table_keys, create_table_options, table_buckets)
 
-    def delete(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
-      dataframe(df, table, DELETE, options)
+    def delete(df: DataFrame, table: String, options: KuduWriteOptions = null, partition_num: Int = sql.DOP): Long =
+      dataframe(df, table, DELETE, options, partition_num)
 
-    def update(df: DataFrame, table: String, options: KuduWriteOptions = null): Long =
-      dataframe(df, table, UPDATE, options)
+    def update(df: DataFrame, table: String, options: KuduWriteOptions = null, partition_num: Int = sql.DOP): Long =
+      dataframe(df, table, UPDATE, options, partition_num)
 
 
   }
